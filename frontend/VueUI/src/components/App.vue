@@ -22,8 +22,8 @@ const route = useRoute()
 .route-fade-enter-active,
 .route-fade-leave-active {
   transition:
-    opacity 220ms ease-out,
-    transform 220ms ease-out;
+    opacity 160ms ease-out,
+    transform 160ms ease-out;
 }
 
 .route-fade-enter-from,

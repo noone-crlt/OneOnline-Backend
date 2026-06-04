@@ -2,7 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 
 import { authUser, ensureAdminAccess, hydrateSession } from '../stores/auth'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
-import HomeView from '../views/HomeView.vue'
+import Homepage from '../components/Homepage.vue'
 import LibraryView from '../components/Library.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
@@ -13,7 +13,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: Homepage,
       meta: {
         title: 'Book Area',
       },
@@ -27,7 +27,7 @@ const router = createRouter({
       name: 'library',
       component: LibraryView,
       meta: {
-        title: 'Library',
+        title: 'Thư viện',
       },
     },
     {
@@ -35,7 +35,7 @@ const router = createRouter({
       name: 'login',
       component: LoginView,
       meta: {
-        title: 'Login',
+        title: 'Đăng nhập',
         guestOnly: true,
       },
     },
@@ -44,7 +44,7 @@ const router = createRouter({
       name: 'register',
       component: RegisterView,
       meta: {
-        title: 'Register',
+        title: 'Đăng ký',
         guestOnly: true,
       },
     },
@@ -57,7 +57,7 @@ const router = createRouter({
       name: 'admin-dashboard',
       component: AdminDashboardView,
       meta: {
-        title: 'Admin Dashboard',
+        title: 'Bảng điều khiển quản trị',
         requiresAdmin: true,
       },
     },

@@ -1,19 +1,23 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { gsap } from 'gsap'
 import UserDropdown from './UserDropdown.vue'
 import { getBooks } from '../services/api'
 import { authUser } from '../stores/auth'
 
 const router = useRouter()
+const pageRoot = ref(null)
 const books = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
+let motionContext
+let homeMotionStarted = false
 
 const navItems = [
-  { label: 'Home', sectionId: 'home' },
-  { label: 'Library', to: '/library' },
-  { label: 'Latest', sectionId: 'latest-books' },
+  { label: 'Trang chủ', sectionId: 'home' },
+  { label: 'Thư viện', to: '/library' },
+  { label: 'Sách mới', sectionId: 'latest-books' },
 ]
 
 const isSignedIn = computed(() => Boolean(authUser.value))
@@ -38,7 +42,7 @@ async function loadBooks() {
     const payload = await getBooks()
     books.value = Array.isArray(payload) ? payload : []
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Could not load books.'
+    errorMessage.value = error instanceof Error ? error.message : 'Không thể tải danh sách sách.'
   } finally {
     isLoading.value = false
   }
@@ -65,7 +69,7 @@ function getInitials(title) {
 
 function summarizeDescription(description) {
   if (!description) {
-    return 'Newly added books will appear here.'
+    return 'Những cuốn sách mới thêm sẽ xuất hiện tại đây.'
   }
 
   const words = description.trim().split(/\s+/)
@@ -103,14 +107,53 @@ function goToLibrary() {
   router.push('/library')
 }
 
-onMounted(loadBooks)
+function initHomeMotion() {
+  if (
+    homeMotionStarted ||
+    !pageRoot.value ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    return
+  }
+
+  homeMotionStarted = true
+
+  motionContext = gsap.context(() => {
+    const timeline = gsap.timeline({
+      defaults: {
+        duration: 0.48,
+        ease: 'power2.out',
+      },
+    })
+
+    timeline
+      .from('.topbar', { y: -12, duration: 0.34 })
+      .from('.hero-media', { scale: 1.018, duration: 0.55 }, '-=0.26')
+      .from('.hero-rail', { x: -12, duration: 0.36 }, '-=0.34')
+      .from('.eyebrow, .hero-headline span, .hero-text, .hero-actions .button', {
+        y: 18,
+        duration: 0.42,
+        stagger: 0.045,
+      }, '-=0.28')
+  }, pageRoot.value)
+}
+
+onMounted(async () => {
+  await nextTick()
+  initHomeMotion()
+  loadBooks()
+})
+
+onUnmounted(() => {
+  motionContext?.revert()
+})
 </script>
 
 <template>
-  <div class="page-shell">
+  <div ref="pageRoot" class="page-shell">
     <header class="topbar">
       <div class="topbar-side topbar-side-left">
-        <button class="brand" type="button" aria-label="BOOK AREA home" @click="scrollToSection('home')">
+        <button class="brand" type="button" aria-label="Về trang chủ Book Area" @click="scrollToSection('home')">
           <span class="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 96 96" role="presentation">
               <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -143,7 +186,7 @@ onMounted(loadBooks)
         </button>
       </div>
 
-      <nav class="topbar-nav" aria-label="Primary">
+      <nav class="topbar-nav" aria-label="Điều hướng chính">
         <button
           v-for="item in navItems"
           :key="item.label"
@@ -156,7 +199,7 @@ onMounted(loadBooks)
 
       <div class="topbar-side topbar-side-right">
         <template v-if="!isSignedIn">
-          <RouterLink class="topbar-utility" to="/login">Login</RouterLink>
+          <RouterLink class="topbar-utility" to="/login">Đăng nhập</RouterLink>
         </template>
 
         <template v-else>
@@ -170,7 +213,7 @@ onMounted(loadBooks)
         <div class="hero-media" aria-hidden="true"></div>
         <div class="hero-rail" aria-hidden="true">
           <span class="hero-rail-line"></span>
-          <p>quiet shelves, lasting stories</p>
+          <p>kệ sách yên, câu chuyện còn mãi</p>
           <span class="hero-rail-mark"></span>
         </div>
 
@@ -178,21 +221,21 @@ onMounted(loadBooks)
           <div class="hero-copy">
             <p class="eyebrow">BOOK AREA</p>
             <h1 class="hero-headline">
-              <span>READ</span>
-              <span>STORIES</span>
-              <span>BEYOND</span>
-              <span>TIME</span>
+              <span>ĐỌC</span>
+              <span>NHỮNG</span>
+              <span>TRANG</span>
+              <span>CÒN MÃI</span>
             </h1>
             <p class="hero-text">
-              A quiet digital library for timeless books, thoughtful reading, and literary discovery.
+              Một thư viện số dịu lại vào cuối ngày, nơi bạn tìm sách, mở tiếp chương đang đọc và nghe những câu chuyện được chọn lọc có gu.
             </p>
 
             <div class="hero-actions">
               <button class="button button-primary" type="button" @click="goToLibrary">
-                Start Reading
+                Bắt đầu đọc
               </button>
               <button class="button button-secondary" type="button" @click="goToLibrary">
-                Explore Library
+                Khám phá thư viện
               </button>
             </div>
           </div>
@@ -202,29 +245,29 @@ onMounted(loadBooks)
       <section id="latest-books" class="content-section latest-section">
         <div class="section-heading">
           <div class="section-mark">
-            <span>02</span>
+            <span>Mới</span>
           </div>
           <div>
-            <p class="eyebrow">Newly updated books</p>
-            <h2>Fresh books from the live catalog.</h2>
+            <p class="eyebrow">Sách vừa cập nhật</p>
+            <h2>Những cuốn mới trên kệ tối nay.</h2>
           </div>
         </div>
 
-        <div v-if="isLoading" class="section-empty">Loading the latest books...</div>
+        <div v-if="isLoading" class="section-empty">Đang tải những cuốn sách mới nhất...</div>
 
         <div v-else-if="errorMessage" class="section-empty section-empty-action">
-          <span>Could not load the latest books: {{ errorMessage }}</span>
-          <button type="button" @click="loadBooks">Try again</button>
+          <span>Không thể tải sách mới nhất: {{ errorMessage }}</span>
+          <button type="button" @click="loadBooks">Tải lại</button>
         </div>
 
         <div v-else-if="latestBooks.length === 0" class="section-empty">
-          No books have been added yet.
+          Chưa có sách nào được thêm vào thư viện.
         </div>
 
         <div v-else class="latest-grid">
           <article v-for="book in latestBooks" :key="book.id ?? book.title" class="latest-book">
             <div class="latest-cover">
-              <img v-if="book.coverUrl" :src="book.coverUrl" :alt="`Cover of ${book.title}`" loading="lazy" />
+              <img v-if="book.coverUrl" :src="book.coverUrl" :alt="`Bìa sách ${book.title}`" loading="lazy" />
               <strong v-else>{{ book.initials }}</strong>
             </div>
 
@@ -261,10 +304,10 @@ onMounted(loadBooks)
 
         <nav class="site-footer-nav" aria-label="Khám phá">
           <h3>Khám phá</h3>
-          <button type="button" @click="scrollToSection('home')">Home</button>
-          <button type="button" @click="goToLibrary">Library</button>
-          <button type="button" @click="scrollToSection('latest-books')">Latest</button>
-          <RouterLink to="/login">Login</RouterLink>
+          <button type="button" @click="scrollToSection('home')">Trang chủ</button>
+          <button type="button" @click="goToLibrary">Thư viện</button>
+          <button type="button" @click="scrollToSection('latest-books')">Sách mới</button>
+          <RouterLink to="/login">Đăng nhập</RouterLink>
         </nav>
 
         <div class="site-footer-project">
@@ -276,39 +319,126 @@ onMounted(loadBooks)
         </div>
       </div>
 
-      <p class="site-footer-bottom">&copy; 2026 Book Area. Made for quiet readers.</p>
+      <p class="site-footer-bottom">&copy; 2026 Book Area. Dành cho những người đọc cần một khoảng lặng.</p>
     </footer>
   </div>
 </template>
 
 <style scoped>
+.page-shell {
+  padding-inline: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.42), transparent 34rem),
+    radial-gradient(ellipse at 86% 18%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 30rem);
+}
+
 .hero {
   position: relative;
+  min-height: min(100svh, 980px);
+  border-bottom: 1px solid color-mix(in oklab, var(--line-soft) 58%, white);
+  background: oklch(0.96 0.017 76);
 }
 
 .hero-inner {
-  width: 100%;
-  max-width: none;
+  width: min(100%, 1440px);
   margin: 0;
-  grid-template-columns: minmax(0, 34rem) 1fr;
-  padding-left: clamp(90px, 7vw, 130px);
+  grid-template-columns: minmax(0, 39rem) 1fr;
+  padding: clamp(7.5rem, 12vw, 10rem) clamp(1.2rem, 4vw, 4.6rem) clamp(3.5rem, 6vw, 5.5rem);
+  padding-left: clamp(5.6rem, 8vw, 8rem);
+}
+
+.hero-media {
+  background-position: 73% center;
+  filter: sepia(0.1) saturate(0.84) contrast(0.92) brightness(0.98);
+  transform: scale(1.015);
+}
+
+.topbar,
+.hero-media,
+.hero-rail,
+.hero-headline span,
+.hero-text,
+.hero-actions .button {
+  will-change: transform;
+}
+
+.hero::before {
+  background:
+    linear-gradient(
+      90deg,
+      oklch(0.966 0.018 76 / 0.98) 0%,
+      oklch(0.956 0.02 74 / 0.94) 24%,
+      oklch(0.94 0.024 72 / 0.74) 44%,
+      oklch(0.9 0.026 68 / 0.28) 68%,
+      transparent 100%
+    );
+  backdrop-filter: blur(5px) saturate(0.94);
+}
+
+.hero::after {
+  background:
+    radial-gradient(ellipse at 18% 36%, rgba(255, 246, 226, 0.52), transparent 24rem),
+    linear-gradient(180deg, rgba(54, 35, 22, 0.06), transparent 24%),
+    linear-gradient(0deg, rgba(46, 29, 18, 0.14), transparent 30%);
+  opacity: 0.64;
 }
 
 .hero-rail {
   display: grid;
   position: absolute;
-  left: clamp(10px, 1vw, 20px);
+  left: clamp(1.1rem, 2.5vw, 2.9rem);
   top: 50%;
   z-index: 3;
   transform: translateY(-50%);
 }
 
+.hero-rail p {
+  color: color-mix(in oklab, var(--text-strong) 72%, transparent);
+}
+
+.hero-rail-mark {
+  transform: rotate(45deg);
+}
+
+.hero-copy {
+  max-width: 39rem;
+}
+
+.eyebrow {
+  margin-bottom: clamp(0.95rem, 1.4vw, 1.4rem);
+  color: color-mix(in oklab, var(--accent-deep) 88%, var(--text-strong));
+}
+
+.hero-copy h1 {
+  max-width: min(100%, 10.6ch);
+  font-size: clamp(3.6rem, 6.2vw, 6rem);
+  line-height: 0.94;
+  letter-spacing: 0.035em;
+}
+
 .hero-text {
+  max-width: 31rem;
   margin-top: clamp(18px, 2vw, 28px);
+  color: color-mix(in oklab, var(--text-strong) 74%, var(--text));
+  font-size: clamp(1rem, 1.2vw, 1.12rem);
+  line-height: 1.8;
 }
 
 .hero-actions {
   margin-top: clamp(22px, 2.5vw, 34px);
+}
+
+.hero-actions .button {
+  border-radius: 8px;
+}
+
+.hero-actions .button-primary {
+  background: color-mix(in oklab, var(--accent) 88%, var(--accent-deep));
+}
+
+.hero-actions .button-secondary {
+  border-color: rgba(73, 45, 25, 0.16);
+  background: rgba(255, 249, 238, 0.7);
 }
 
 @media (max-width: 768px) {
@@ -327,12 +457,12 @@ onMounted(loadBooks)
   width: min(100%, var(--content-width));
   margin: clamp(3rem, 6vw, 5.5rem) auto 0;
   overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 78%, white);
+  border: 1px solid color-mix(in oklab, var(--line-soft) 86%, white);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, oklch(0.97 0.012 78), oklch(0.91 0.026 72));
+    linear-gradient(135deg, oklch(0.965 0.014 78), oklch(0.885 0.03 70));
   color: var(--text);
-  box-shadow: 0 22px 70px color-mix(in oklab, var(--accent-deep) 10%, transparent);
+  box-shadow: 0 5px 8px color-mix(in oklab, var(--accent-deep) 10%, transparent);
 }
 
 .site-footer-main {
@@ -448,24 +578,27 @@ onMounted(loadBooks)
   width: min(100%, var(--content-width));
   margin: 0 auto;
   display: grid;
-  gap: 1.35rem;
+  gap: clamp(1.4rem, 3vw, 2.4rem);
+  padding-inline: clamp(1rem, 2.5vw, 2rem);
 }
 
 .latest-grid {
   display: grid;
-  gap: 0.9rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.85rem, 1.5vw, 1.2rem);
 }
 
 .latest-book {
   display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr auto;
   gap: 1rem;
-  align-items: center;
-  padding: 0.9rem 1rem;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 82%, white);
+  align-items: stretch;
+  padding: 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--line-soft) 84%, white);
   border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 90%, transparent);
-  box-shadow: var(--shadow-soft);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface) 94%, white), color-mix(in oklab, var(--surface-soft) 62%, white));
+  box-shadow: 0 4px 8px color-mix(in oklab, var(--accent-deep) 8%, transparent);
   transition:
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 220ms ease-out,
@@ -475,12 +608,12 @@ onMounted(loadBooks)
 .latest-book:hover {
   transform: translateY(-3px);
   border-color: color-mix(in oklab, var(--line-strong) 72%, white);
-  box-shadow: 0 22px 56px color-mix(in oklab, var(--accent-deep) 12%, transparent);
+  box-shadow: 0 6px 8px color-mix(in oklab, var(--accent-deep) 12%, transparent);
 }
 
 .latest-cover {
   position: relative;
-  min-height: 9.4rem;
+  min-height: clamp(12rem, 22vw, 18rem);
   overflow: hidden;
   border-radius: 6px;
   background: linear-gradient(160deg, oklch(0.92 0.02 88), oklch(0.66 0.05 62) 50%, oklch(0.3 0.03 45));
@@ -493,7 +626,7 @@ onMounted(loadBooks)
   inset: 0;
   background:
     linear-gradient(90deg, rgba(34, 22, 15, 0.18), transparent 18%),
-    repeating-linear-gradient(0deg, rgba(255, 248, 229, 0.08) 0 1px, transparent 1px 13px);
+    radial-gradient(ellipse at 72% 12%, rgba(255, 248, 229, 0.18), transparent 12rem);
 }
 
 .latest-cover img {
@@ -517,7 +650,9 @@ onMounted(loadBooks)
 
 .latest-copy {
   display: grid;
-  gap: 0.65rem;
+  align-content: start;
+  gap: 0.62rem;
+  padding-inline: 0.1rem;
 }
 
 .latest-meta {
@@ -529,21 +664,28 @@ onMounted(loadBooks)
 
 .latest-copy h3 {
   color: var(--text-strong);
-  font-size: clamp(1.25rem, 1.9vw, 1.85rem);
+  font-size: clamp(1.18rem, 1.5vw, 1.45rem);
   line-height: 1.08;
 }
 
 .latest-copy p:last-child {
   max-width: 58ch;
+  color: var(--text-soft);
+  font-size: 0.93rem;
+  line-height: 1.62;
 }
 
 .latest-action {
   display: flex;
   align-items: flex-end;
+  padding-top: 0.3rem;
 }
 
 .latest-button {
-  min-width: 9rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.9rem;
+  border-radius: 8px;
 }
 
 .latest-button:disabled {
@@ -577,25 +719,58 @@ onMounted(loadBooks)
 }
 
 @media (max-width: 980px) {
+  .latest-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .latest-book {
-    grid-template-columns: 7rem minmax(0, 1fr);
-    align-items: start;
+    align-items: stretch;
   }
 
   .latest-action {
-    grid-column: 1 / -1;
     display: block;
   }
 }
 
 @media (max-width: 720px) {
+  .hero {
+    min-height: 88svh;
+  }
+
+  .hero::before {
+    background:
+      linear-gradient(
+        90deg,
+        oklch(0.966 0.018 76 / 0.98) 0%,
+        oklch(0.956 0.02 74 / 0.9) 48%,
+        oklch(0.94 0.024 72 / 0.62) 76%,
+        oklch(0.9 0.026 68 / 0.3) 100%
+      );
+  }
+
+  .hero-copy h1 {
+    max-width: min(100%, 9.4ch);
+    font-size: clamp(2.25rem, 10.8vw, 3.45rem);
+    line-height: 0.98;
+    letter-spacing: 0.025em;
+  }
+
+  .hero-text {
+    max-width: min(100%, 18rem);
+    color: var(--text-strong);
+    line-height: 1.7;
+  }
+
+  .latest-grid {
+    grid-template-columns: 1fr;
+  }
+
   .latest-book {
-    grid-template-columns: 5.8rem minmax(0, 1fr);
     padding: 0.8rem;
   }
 
   .latest-cover {
-    min-height: 8.2rem;
+    min-height: 15rem;
   }
 
   .latest-button {

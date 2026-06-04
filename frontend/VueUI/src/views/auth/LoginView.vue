@@ -68,7 +68,7 @@ async function handleSubmit() {
 
     <section class="auth-panel">
       <form class="auth-form" @submit.prevent="handleSubmit">
-        <p v-if="successMessage" class="auth-success">{{ successMessage }}</p>
+        <p v-if="successMessage" class="auth-success" role="status">{{ successMessage }}</p>
 
         <label>
           <span>Email</span>
@@ -82,8 +82,9 @@ async function handleSubmit() {
 
         <p v-if="errorMessage" class="auth-error">{{ errorMessage }}</p>
 
-        <button class="auth-submit" type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+        <button class="auth-submit" type="submit" :disabled="isSubmitting" :aria-busy="isSubmitting">
+          <span v-if="isSubmitting" class="auth-submit__spinner" aria-hidden="true"></span>
+          <span class="auth-submit__label">{{ isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập' }}</span>
         </button>
       </form>
 
@@ -187,6 +188,19 @@ async function handleSubmit() {
   border-radius: 8px;
   background: color-mix(in oklab, var(--surface) 88%, white);
   color: var(--text-strong);
+  transition:
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out,
+    transform 180ms ease-out,
+    background-color 180ms ease-out;
+}
+
+.auth-form input:focus {
+  border-color: color-mix(in oklab, var(--accent-deep) 54%, white);
+  background: color-mix(in oklab, var(--surface) 96%, white);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent-glow) 54%, transparent);
+  outline: 0;
+  transform: translateY(-1px);
 }
 
 .auth-success,
@@ -198,25 +212,53 @@ async function handleSubmit() {
 .auth-success {
   background: color-mix(in oklab, var(--accent-glow) 58%, white);
   color: var(--text-strong);
+  animation: auth-success-arrive 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .auth-error {
   background: rgba(155, 53, 41, 0.08);
   color: rgb(140, 47, 35);
+  animation: auth-error-pulse 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .auth-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
   min-height: 3.4rem;
   margin-top: 0.25rem;
   border-radius: 8px;
   background: linear-gradient(135deg, var(--accent), var(--accent-deep));
   color: white;
   font-weight: 700;
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms ease-out,
+    filter 160ms ease-out;
+}
+
+.auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px color-mix(in oklab, var(--accent-deep) 18%, transparent);
+}
+
+.auth-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .auth-submit:disabled {
   opacity: 0.72;
   cursor: wait;
+}
+
+.auth-submit__spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.36);
+  border-top-color: rgba(255, 255, 255, 0.96);
+  border-radius: 999px;
+  animation: auth-spin 760ms linear infinite;
 }
 
 .auth-note {
@@ -237,6 +279,49 @@ async function handleSubmit() {
 @media (max-width: 520px) {
   .auth-page {
     padding: 0.8rem;
+  }
+}
+
+@keyframes auth-success-arrive {
+  from {
+    transform: translateY(8px) scale(0.98);
+    filter: blur(3px);
+  }
+}
+
+@keyframes auth-error-pulse {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  30% {
+    transform: translateX(-6px);
+  }
+
+  60% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-success,
+  .auth-error,
+  .auth-submit__spinner {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .auth-form input,
+  .auth-submit {
+    transition-duration: 0.01ms !important;
   }
 }
 </style>

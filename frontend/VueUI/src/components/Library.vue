@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import UserDropdown from './UserDropdown.vue'
 import { getBooks } from '../services/api'
@@ -11,6 +11,7 @@ const activeFilter = ref('All')
 const books = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
+const hasLoadedBooks = ref(false)
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -56,6 +57,7 @@ const filteredBooks = computed(() => {
 async function loadBooks() {
   isLoading.value = true
   errorMessage.value = ''
+  hasLoadedBooks.value = false
 
   try {
     const payload = await getBooks()
@@ -64,6 +66,8 @@ async function loadBooks() {
     errorMessage.value = error instanceof Error ? error.message : 'Could not load books.'
   } finally {
     isLoading.value = false
+    await nextTick()
+    hasLoadedBooks.value = true
   }
 }
 
@@ -127,7 +131,16 @@ function handleNavClick(item) {
   scrollToSection(item.sectionId)
 }
 
-onMounted(loadBooks)
+watch([searchQuery, activeFilter], async () => {
+  hasLoadedBooks.value = false
+  await nextTick()
+  hasLoadedBooks.value = true
+})
+
+onMounted(async () => {
+  await nextTick()
+  loadBooks()
+})
 </script>
 
 <template>
@@ -189,7 +202,7 @@ onMounted(loadBooks)
       </div>
     </header>
 
-    <main>
+    <main class="library-main">
       <section class="library-hero" aria-labelledby="library-title">
         <div class="library-hero-copy">
           <p class="library-kicker">Library</p>
@@ -242,7 +255,7 @@ onMounted(loadBooks)
           </div>
         </div>
 
-        <div class="book-list" aria-live="polite">
+        <div class="book-list" :class="{ 'book-list--ready': hasLoadedBooks }" aria-live="polite">
           <div v-if="isLoading" class="empty-state">Loading books from the library...</div>
 
           <div v-else-if="errorMessage" class="empty-state empty-state-action">
@@ -259,7 +272,13 @@ onMounted(loadBooks)
           </div>
 
           <template v-else>
-            <article v-for="book in filteredBooks" :key="book.id ?? book.title" class="library-book">
+            <article
+              v-for="(book, index) in filteredBooks"
+              :key="book.id ?? book.title"
+              class="library-book"
+              :class="{ 'library-book--animated': hasLoadedBooks && index < 6 }"
+              :style="{ '--book-index': Math.min(index, 5) }"
+            >
               <div class="library-cover">
                 <img v-if="book.coverUrl" :src="book.coverUrl" :alt="`Cover of ${book.title}`" loading="lazy" />
                 <strong v-else class="cover-placeholder">{{ book.initials }}</strong>
@@ -300,6 +319,10 @@ onMounted(loadBooks)
   color: var(--text);
 }
 
+.library-main {
+  display: grid;
+}
+
 .library-hero,
 .catalog-section {
   width: min(100%, var(--content-width));
@@ -310,6 +333,7 @@ onMounted(loadBooks)
   display: grid;
   gap: 1.2rem;
   padding: clamp(2.5rem, 6vw, 5rem) 0 0;
+  animation: library-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .library-hero-copy {
@@ -317,6 +341,7 @@ onMounted(loadBooks)
   justify-items: start;
   gap: 1.1rem;
   max-width: 42rem;
+  will-change: transform, opacity;
 }
 
 .library-kicker,
@@ -371,6 +396,19 @@ onMounted(loadBooks)
   border-radius: 8px;
   background: color-mix(in oklab, var(--surface) 86%, transparent);
   box-shadow: 0 18px 50px color-mix(in oklab, var(--accent-deep) 10%, transparent);
+  transition:
+    border-color 180ms ease-out,
+    background-color 180ms ease-out,
+    box-shadow 180ms ease-out,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.search-field:focus-within {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--accent-deep) 46%, white);
+  background: color-mix(in oklab, var(--surface) 94%, white);
+  box-shadow: 0 6px 12px color-mix(in oklab, var(--accent-deep) 10%, transparent);
 }
 
 .search-field svg {
@@ -394,6 +432,7 @@ onMounted(loadBooks)
   display: grid;
   gap: clamp(1.4rem, 3vw, 2.2rem);
   padding: clamp(3rem, 7vw, 5rem) 0 0;
+  animation: library-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
 }
 
 .section-intro {
@@ -421,6 +460,7 @@ onMounted(loadBooks)
 }
 
 .mood-filter button {
+  position: relative;
   min-height: 2.5rem;
   padding: 0.58rem 0.88rem;
   border: 1px solid color-mix(in oklab, var(--line-soft) 82%, white);
@@ -443,6 +483,10 @@ onMounted(loadBooks)
   color: var(--text-strong);
 }
 
+.mood-filter button:active {
+  transform: translateY(0) scale(0.98);
+}
+
 .book-list {
   display: grid;
   gap: 0.85rem;
@@ -463,6 +507,12 @@ onMounted(loadBooks)
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 220ms ease-out,
     box-shadow 220ms ease-out;
+}
+
+.library-book--animated {
+  animation: library-book-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--book-index, 0) * 40ms);
+  will-change: transform, opacity;
 }
 
 .library-book:hover {
@@ -559,6 +609,10 @@ onMounted(loadBooks)
   background: color-mix(in oklab, var(--accent-glow) 62%, white);
 }
 
+.library-book-action .read-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
 .library-book-action .read-button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
@@ -632,6 +686,37 @@ onMounted(loadBooks)
 
   .library-book-action .read-button {
     width: 100%;
+  }
+}
+
+@keyframes library-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes library-book-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-hero,
+  .catalog-section,
+  .library-book--animated {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .search-field,
+  .mood-filter button,
+  .library-book,
+  .library-book-action .read-button {
+    transition-duration: 0.01ms !important;
   }
 }
 </style>
