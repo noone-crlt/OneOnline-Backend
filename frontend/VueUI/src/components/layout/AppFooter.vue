@@ -5,11 +5,7 @@
         <div class="app-footer__brand">
           <RouterLink class="app-footer__logo" to="/" aria-label="Về trang chủ BOOK AREA">
             <span class="app-footer__logo-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M5 5.8c0-1.1.9-2 2-2h10.2c.9 0 1.6.7 1.6 1.6v14.8H7c-1.1 0-2-.9-2-2V5.8Z" />
-                <path d="M7.2 3.8v13.7c0 .7.6 1.2 1.2 1.2h10.4" />
-                <path d="M9.4 7.5h6.4M9.4 10.5h5.2" />
-              </svg>
+              <img src="/logo-book-area.svg" alt="BOOK AREA logo" class="app-footer__logo-image" />
             </span>
             <span class="app-footer__wordmark">BOOK AREA</span>
           </RouterLink>
@@ -127,13 +123,9 @@ function scrollToLatestBooks() {
   width: 3rem;
   height: 3rem;
   place-items: center;
-  border-radius: 8px;
-  background: #a77b50;
-  color: #fffaf3;
   flex: 0 0 auto;
 }
 
-.app-footer__logo-mark svg,
 .app-footer__support-icon svg,
 .app-footer__tags svg {
   width: 1.25rem;
@@ -143,6 +135,13 @@ function scrollToLatestBooks() {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.6;
+}
+
+.app-footer__logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .app-footer__wordmark {
