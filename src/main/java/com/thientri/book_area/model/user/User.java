@@ -17,6 +17,8 @@ import com.thientri.book_area.model.order.Cart;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -29,12 +31,14 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter // Chỉ dùng Getter/Setter, tuyệt đối bỏ @Data
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -62,6 +66,12 @@ public class User implements UserDetails {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    // Map chính xác cột status với Enum, báo cho JPA biết để lưu dưới dạng chuỗi (String)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
+
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -83,7 +93,7 @@ public class User implements UserDetails {
     private Cart cart;
 
     public void setCart(Cart cart) {
-        if (cart == null) { // Nếu xóa giỏ hàng, cần đảm bảo ràng buộc hai chiều được duy trì
+        if (cart == null) { 
             if (this.cart != null) {    
                 this.cart.setUser(null);
             }
@@ -100,7 +110,6 @@ public class User implements UserDetails {
         }
     }
 
-    // Lấy ra tất cả quyền của người dùng đang có (Ghi đè các phương thức đã implements)
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
@@ -120,7 +129,8 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        // Tài khoản bị khóa (BANNED) sẽ không thể đăng nhập
+        return this.status != UserStatus.BANNED;
     }
 
     @Override
@@ -130,6 +140,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        // Chỉ tài khoản ACTIVE hoặc INACTIVE mới được coi là tồn tại, DELETED thì chặn hoàn toàn
+        return this.status != UserStatus.DELETED;
     }
 }

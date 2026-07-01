@@ -2,6 +2,7 @@ package com.thientri.book_area.model.user;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,6 +38,17 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "refresh_token", length = 255, nullable = false)
+    // SỬA: Bổ sung unique = true để chống lưu trùng token
+    @Column(name = "refresh_token", length = 255, nullable = false, unique = true)
     private String refreshToken;
+
+    // THÊM MỚI: Dấu vết thời gian tạo
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    // THÊM MỚI: Dùng Boolean chuẩn chỉnh thay vì String
+    @Column(name = "revoked")
+    @Builder.Default
+    private Boolean revoked = false;
 }

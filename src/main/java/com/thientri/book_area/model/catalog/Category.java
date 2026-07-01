@@ -24,6 +24,7 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 255)
+    // Bắt buộc phải có tên và không được trùng lặp danh mục
+    @Column(name = "name", length = 255, nullable = false, unique = true)
     private String name;
 }

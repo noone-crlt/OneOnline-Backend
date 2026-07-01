@@ -30,12 +30,34 @@ public class Address {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     
-    @Column(name = "address_line", columnDefinition = "TEXT")
+    @Column(name = "recipient_name", length = 255, nullable = false)
+    private String recipientName;
+
+    @Column(name = "recipient_phone", length = 20, nullable = false)
+    private String recipientPhone;
+
+    @Column(name = "address_line", columnDefinition = "NVARCHAR(MAX)", nullable = false)
     private String addressLine;
 
-    @Column(name = "city", length = 100)
-    private String city;
+    @Column(name = "province_id", length = 50, nullable = false)
+    private String provinceId;
 
-    @Column(name = "country", length = 100)
-    private String country;
+    @Column(name = "district_id", length = 50, nullable = false)
+    private String districtId;
+
+    @Column(name = "ward_id", length = 50, nullable = false)
+    private String wardId;
+
+    @Column(name = "province_name", length = 100, nullable = false)
+    private String provinceName;
+
+    @Column(name = "district_name", length = 100, nullable = false)
+    private String districtName;
+
+    @Column(name = "ward_name", length = 100, nullable = false)
+    private String wardName;
+
+    @Column(name = "is_default")
+    @Builder.Default
+    private Boolean isDefault = false; // Sử dụng Boolean object thay vì bit thuần túy
 }

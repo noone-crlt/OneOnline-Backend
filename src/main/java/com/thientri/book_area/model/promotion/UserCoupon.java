@@ -9,9 +9,19 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "user_coupons")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserCoupon {
     @EmbeddedId
     private UserCouponId id;
@@ -26,6 +36,8 @@ public class UserCoupon {
     @JoinColumn(name = "coupon_id")
     private Coupon coupon;
 
-    @Column(name = "used", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    // SỬA: Để Hibernate tự xử lý kiểu BIT của SQL Server
+    @Column(name = "used")
+    @Builder.Default
     private Boolean used = false;
 }

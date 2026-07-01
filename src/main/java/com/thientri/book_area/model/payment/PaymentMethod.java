@@ -24,9 +24,11 @@ public class PaymentMethod {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", unique = true, length = 50)
+    // Tên phương thức không được phép rỗng
+    @Column(name = "name", unique = true, length = 50, nullable = false)
     private String name;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    // SỬA: Trả về chuẩn SQL Server
+    @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 }

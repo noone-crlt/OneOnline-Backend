@@ -1,17 +1,32 @@
 package com.thientri.book_area.dto.response.order;
 
 import java.math.BigDecimal;
-
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
+@Data
 @Builder
 public class OrderResponse {
-    private Long orderId;
     private String orderCode;
+    private String status; // Lấy từ OrderStatus.name
+    
+    // Giao hàng
+    private String recipientName;
+    private String recipientPhone;
+    private String fullShippingAddress; // Gộp chung thành 1 chuỗi cho gọn
+    private String trackingCode;
+    
+    // Kế toán
+    private BigDecimal subTotal;
+    private BigDecimal shippingFee;
+    private String appliedCouponCode;
+    private BigDecimal discountAmount;
     private BigDecimal totalAmount;
-    private String orderStatus;
-    private String paymentMethod;
-    private String qrCodeUrl;
+    
+    private LocalDateTime createdAt;
+    
+    // Danh sách sản phẩm đã mua
+    private List<CartItemResponse> orderItems; // Tái sử dụng form hiển thị giống CartItem
 }

@@ -1,9 +1,7 @@
 package com.thientri.book_area.model.catalog;
 
 import java.time.LocalDateTime;
-
 import org.hibernate.annotations.CreationTimestamp;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -31,7 +29,8 @@ public class Publisher {
     @Column(name = "name", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    // Sửa lại chuẩn SQL Server
+    @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
     @CreationTimestamp

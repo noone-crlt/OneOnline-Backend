@@ -39,4 +39,16 @@ public class Cart {
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CartItem> cartItems = new ArrayList<>();
+
+    // THÊM MỚI: Helper method để thêm sản phẩm vào giỏ an toàn
+    public void addCartItem(CartItem item) {
+        cartItems.add(item);
+        item.setCart(this);
+    }
+
+    // THÊM MỚI: Helper method để xóa sản phẩm khỏi giỏ an toàn
+    public void removeCartItem(CartItem item) {
+        cartItems.remove(item);
+        item.setCart(null);
+    }
 }

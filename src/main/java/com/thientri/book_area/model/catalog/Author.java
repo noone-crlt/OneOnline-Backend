@@ -24,6 +24,7 @@ public class Author {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 255)
+    // Bắt buộc phải có tên
+    @Column(name = "name", length = 255, nullable = false)
     private String name;
 }
