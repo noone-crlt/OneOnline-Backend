@@ -18,6 +18,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.jsonwebtoken.JwtException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -48,23 +49,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7).trim();
+        if (jwt.isEmpty() || "null".equalsIgnoreCase(jwt) || "undefined".equalsIgnoreCase(jwt)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         log.debug("Chuỗi JWT nhận được: {}", jwt);
 
-        final String userEmail = jwtService.extractEmail(jwt).trim();
-        log.debug("Email giải mã được: {}", userEmail);
+        try {
+            final String userEmail = jwtService.extractEmail(jwt);
+            log.debug("Email giải mã được: {}", userEmail);
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            log.debug("Bắt đầu xác thực cho: {}", userEmail);
+            if (userEmail != null
+                    && !userEmail.isBlank()
+                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+                log.debug("Bắt đầu xác thực cho: {}", userEmail);
 
-            User userAuth = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new RuntimeException("Khong tim thay user voi email duoc xac thuc!"));
+                User userAuth = userRepository.findByEmail(userEmail)
+                        .orElse(null);
 
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(userAuth, null, userAuth.getAuthorities());
+                if (userAuth != null) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userAuth, null, userAuth.getAuthorities());
 
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+        } catch (JwtException | IllegalArgumentException exception) {
+            log.debug("Bỏ qua JWT không hợp lệ: {}", exception.getMessage());
         }
 
         filterChain.doFilter(request, response);

@@ -12,13 +12,15 @@
     "dev:tunnel": "concurrently -k \"npm run dev\" \"npm run tunnel\""
   },
   "dependencies": {
+    "@phosphor-icons/vue": "^2.2.1",
     "axios": "^1.16.1",
     "bootstrap": "^5.3.8",
     "echarts": "^6.0.0",
     "gsap": "^3.15.0",
     "vue": "^3.5.32",
     "vue-echarts": "^8.0.1",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.4",

@@ -33,6 +33,7 @@ public class BookImage {
     @JsonBackReference
     private Book book;
 
-    @Column(name = "image_file_name", columnDefinition = "TEXT")
+    // Sửa TEXT thành NVARCHAR(MAX)
+    @Column(name = "image_file_name", columnDefinition = "NVARCHAR(MAX)")
     private String imageFileName;
 }

@@ -1,67 +1,66 @@
 package com.thientri.book_area.controller.auth;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.thientri.book_area.dto.request.auth.LoginRequest;
-import com.thientri.book_area.dto.request.auth.RegisterRequest;
-import com.thientri.book_area.dto.request.auth.TokenRefreshRequest;
-import com.thientri.book_area.dto.response.auth.AuthResponse;
-import com.thientri.book_area.dto.response.user.UserResponse;
-import com.thientri.book_area.model.user.RefreshToken;
-import com.thientri.book_area.security.JwtService;
-import com.thientri.book_area.service.auth.AuthService;
-import com.thientri.book_area.service.user.RefreshTokenService;
+import com.thientri.book_area.dto.request.user.LoginRequest;
+import com.thientri.book_area.dto.request.user.RegisterRequest;
+import com.thientri.book_area.dto.request.user.UpdateProfileRequest;
+import com.thientri.book_area.dto.response.user.AuthResponse;
+import com.thientri.book_area.model.user.Role;
+import com.thientri.book_area.model.user.User;
+import com.thientri.book_area.service.auth.IAuthService;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
-    private final RefreshTokenService refreshTokenService;
-    private final JwtService jwtService;
-
-    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, JwtService jwtService) {
-        this.authService = authService;
-        this.refreshTokenService = refreshTokenService;
-        this.jwtService = jwtService;
-    }
+    private final IAuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        authService.register(registerRequest);
-        return ResponseEntity.status(201).body(java.util.Map.of(
-                "message",
-                "Đăng ký thành công, vui lòng đăng nhập."));
+    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.ok("Đăng ký tài khoản thành công!");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
-        return ResponseEntity.ok(authService.login(loginRequest));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> me(Authentication authentication) {
-        return ResponseEntity.ok(authService.getCurrentUser(authentication.getName()));
+    public ResponseEntity<Map<String, Object>> getCurrentUser(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(profileResponse(user));
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@RequestBody TokenRefreshRequest request) {
-        String requestRefreshToken = request.getRefreshToken();
+    @PatchMapping("/me")
+    public ResponseEntity<Map<String, Object>> updateProfile(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(profileResponse(authService.updateProfile(user, request)));
+    }
 
-        return refreshTokenService.findByToken(requestRefreshToken)
-                .map(refreshTokenService::verifyExpiration)
-                .map(RefreshToken::getUser)
-                .map(user -> {
-                    String newAccessToken = jwtService.generateToken(user);
-                    return ResponseEntity.ok(authService.buildAuthResponse(user, newAccessToken, requestRefreshToken));
-                }).orElseThrow(() -> new RuntimeException("The Refresh Token khong ton tai trong he thong!"));
+    private Map<String, Object> profileResponse(User user) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", user.getId());
+        response.put("email", user.getEmail());
+        response.put("fullName", user.getFullName());
+        response.put("phone", user.getPhone());
+        response.put("roles", user.getRoles().stream().map(Role::getName).toList());
+        return response;
     }
 }

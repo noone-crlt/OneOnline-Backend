@@ -15,9 +15,24 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "reviews")
+// SỬA: Thêm UniqueConstraint chặn việc 1 user đánh giá 1 cuốn sách nhiều lần
+@Table(name = "reviews", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "book_id"})
+})
+// SỬA: Bổ sung Lombok
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Review {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,11 +46,18 @@ public class Review {
     @JoinColumn(name = "book_id", nullable = false)
     private Book book;
 
-    @Column(name = "rating")
+    // Khoảng giá trị biên 1-5 được Database bảo vệ, Java cần đảm bảo không Null
+    @Column(name = "rating", nullable = false)
     private Integer rating;
 
-    @Column(name = "comment", columnDefinition = "TEXT")
+    // SỬA: Đổi TEXT thành NVARCHAR(MAX)
+    @Column(name = "comment", columnDefinition = "NVARCHAR(MAX)")
     private String comment;
+
+    // THÊM MỚI: Cơ chế kiểm duyệt bình luận (Admin duyệt mới được hiện)
+    @Column(name = "is_approved")
+    @Builder.Default
+    private Boolean isApproved = false;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

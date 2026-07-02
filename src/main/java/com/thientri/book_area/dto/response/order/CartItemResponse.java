@@ -1,21 +1,18 @@
 package com.thientri.book_area.dto.response.order;
 
-import com.thientri.book_area.dto.response.catalog.BookResponse;
-
-import lombok.AllArgsConstructor;
+import java.math.BigDecimal;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 @Builder
 public class CartItemResponse {
-    private Long id;
-    private Long cartId;
-    private BookResponse bookResponse;
+    private Long id; // ID của dòng giỏ hàng
+    private Long editionId;
+    private String bookTitle;       // Flattening từ Book
+    private String format;          // PHYSICAL, AUDIOBOOK...
+    private String coverImageUrl;   // Ảnh bìa để hiển thị
+    private BigDecimal salePrice;   // Giá lúc hiển thị
     private Integer quantity;
+    private BigDecimal subTotal;    // Backend tự nhân: salePrice * quantity
 }

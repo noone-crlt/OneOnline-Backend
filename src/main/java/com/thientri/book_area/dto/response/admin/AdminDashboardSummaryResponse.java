@@ -19,10 +19,6 @@ public class AdminDashboardSummaryResponse {
     private long totalCategories;
     private long totalAuthors;
     private long totalChapters;
-    private long totalViews;
-    private long totalFavorites;
     private long totalComments;
-    private long totalReports;
-    private long pendingReports;
     private BigDecimal totalRevenue;
 }

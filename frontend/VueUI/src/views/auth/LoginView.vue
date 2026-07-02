@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { PhArrowLeft, PhSignIn } from '@phosphor-icons/vue'
 
 import { login } from '../../stores/auth'
 
@@ -57,271 +58,377 @@ async function handleSubmit() {
 
 <template>
   <main class="auth-page">
-    <section class="auth-hero">
-      <RouterLink class="auth-back" to="/">Quay về trang đọc sách</RouterLink>
-      <p class="auth-eyebrow">BOOK AREA</p>
-      <h1>Đăng nhập Book Area</h1>
-      <p class="auth-lede">
-        Tiếp tục đọc, xem library, hoặc vào dashboard nếu tài khoản của bạn có quyền quản trị.
-      </p>
-    </section>
+    <div class="auth-container">
+      <!-- Left side: Image/Branding -->
+      <div class="auth-visual">
+        <div class="visual-overlay"></div>
+        <div class="visual-content">
+          <RouterLink class="back-link" to="/">
+            <PhArrowLeft :size="20" />
+            Về trang chủ
+          </RouterLink>
+          <div class="brand">
+            <h1>One Online</h1>
+            <p>Khám phá kho tàng kiến thức và những câu chuyện bất tận.</p>
+          </div>
+        </div>
+      </div>
 
-    <section class="auth-panel">
-      <form class="auth-form" @submit.prevent="handleSubmit">
-        <p v-if="successMessage" class="auth-success" role="status">{{ successMessage }}</p>
+      <!-- Right side: Form -->
+      <div class="auth-form-wrapper">
+        <div class="auth-form-inner">
+          <div class="form-header">
+            <h2>Chào mừng trở lại</h2>
+            <p>Vui lòng đăng nhập để tiếp tục đọc sách.</p>
+          </div>
 
-        <label>
-          <span>Email</span>
-          <input v-model="form.email" type="email" placeholder="you@example.com" required />
-        </label>
+          <form class="auth-form" @submit.prevent="handleSubmit">
+            <div v-if="successMessage" class="alert alert-success" role="status">
+              {{ successMessage }}
+            </div>
 
-        <label>
-          <span>Mật khẩu</span>
-          <input v-model="form.password" type="password" placeholder="Nhập mật khẩu" required />
-        </label>
+            <div class="form-group">
+              <label for="email">Địa chỉ Email</label>
+              <input
+                id="email"
+                v-model="form.email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                :disabled="isSubmitting"
+              />
+            </div>
 
-        <p v-if="errorMessage" class="auth-error">{{ errorMessage }}</p>
+            <div class="form-group">
+              <label for="password">Mật khẩu</label>
+              <input
+                id="password"
+                v-model="form.password"
+                type="password"
+                placeholder="••••••••"
+                required
+                :disabled="isSubmitting"
+              />
+            </div>
 
-        <button class="auth-submit" type="submit" :disabled="isSubmitting" :aria-busy="isSubmitting">
-          <span v-if="isSubmitting" class="auth-submit__spinner" aria-hidden="true"></span>
-          <span class="auth-submit__label">{{ isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập' }}</span>
-        </button>
-      </form>
+            <div class="form-options">
+              <label class="remember-me">
+                <input type="checkbox" />
+                <span>Ghi nhớ đăng nhập</span>
+              </label>
+              <a href="#" class="forgot-password">Quên mật khẩu?</a>
+            </div>
 
-      <p class="auth-note">
-        Chưa có tài khoản?
-        <RouterLink to="/register">Đăng ký</RouterLink>
-      </p>
-    </section>
+            <div v-if="errorMessage" class="alert alert-error">
+              {{ errorMessage }}
+            </div>
+
+            <button class="submit-btn" type="submit" :disabled="isSubmitting">
+              <span v-if="isSubmitting" class="spinner"></span>
+              <template v-else>
+                Đăng nhập
+                <PhSignIn :size="20" weight="bold" />
+              </template>
+            </button>
+          </form>
+
+          <p class="auth-redirect">
+            Chưa có tài khoản?
+            <RouterLink to="/register">Đăng ký ngay</RouterLink>
+          </p>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .auth-page {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 28rem);
-  gap: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f3f4f6; /* Tailwind gray-100 */
   padding: 1rem;
-  background:
-    linear-gradient(180deg, rgba(255, 250, 243, 0.95), rgba(245, 236, 224, 0.92));
 }
 
-.auth-hero,
-.auth-panel {
-  border: 1px solid color-mix(in oklab, var(--line-soft) 82%, white);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 94%, transparent);
-  box-shadow: 0 22px 60px color-mix(in oklab, var(--accent-deep) 10%, transparent);
+.auth-container {
+  display: flex;
+  width: 100%;
+  max-width: 1000px;
+  min-height: 600px;
+  background: #ffffff;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-.auth-hero {
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  padding: clamp(1.5rem, 4vw, 3rem);
-  background:
-    linear-gradient(135deg, oklch(0.97 0.012 78), oklch(0.93 0.018 74)),
-    color-mix(in oklab, var(--surface) 92%, transparent);
+/* Visual Section (Left) */
+.auth-visual {
+  flex: 1;
+  position: relative;
+  background-image: url('https://images.unsplash.com/photo-1456953180671-730de08edaa7?q=80&w=1200&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  display: none;
 }
 
-.auth-back {
-  width: max-content;
-  color: var(--text-soft);
-  font-size: 0.9rem;
-  transition: color 180ms ease-out;
+@media (min-width: 768px) {
+  .auth-visual {
+    display: flex;
+  }
 }
 
-.auth-back:hover {
-  color: var(--text-strong);
+.visual-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.9));
 }
 
-.auth-eyebrow {
-  font-size: 0.78rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-soft);
+.visual-content {
+  position: relative;
+  z-index: 10;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  color: white;
 }
 
-.auth-hero h1 {
-  color: var(--text-strong);
-  font-family: 'Raleway', 'Segoe UI', sans-serif;
-  font-size: clamp(2.4rem, 5vw, 4.3rem);
-  font-weight: 300;
-  line-height: 0.96;
-  max-width: 12ch;
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: color 0.2s;
+  width: fit-content;
 }
 
-.auth-lede {
-  max-width: 36rem;
-  color: var(--text);
-  font-size: 1.02rem;
-  line-height: 1.7;
+.back-link:hover {
+  color: white;
 }
 
-.auth-panel {
-  display: grid;
-  align-content: center;
-  gap: 1rem;
-  padding: clamp(1.4rem, 3vw, 2rem);
+.brand h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  margin: 0 0 1rem 0;
+  line-height: 1;
+}
+
+.brand p {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  max-width: 90%;
+  line-height: 1.5;
+}
+
+/* Form Section (Right) */
+.auth-form-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  background: #ffffff;
+}
+
+.auth-form-inner {
+  width: 100%;
+  max-width: 380px;
+}
+
+.form-header {
+  margin-bottom: 2.5rem;
+}
+
+.form-header h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #111827; /* gray-900 */
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.03em;
+}
+
+.form-header p {
+  color: #6b7280; /* gray-500 */
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .auth-form {
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.auth-form label {
-  display: grid;
-  gap: 0.45rem;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.auth-form span {
-  color: var(--text-strong);
-  font-size: 0.94rem;
+.form-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151; /* gray-700 */
 }
 
-.auth-form input {
-  min-height: 3.4rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 84%, white);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 88%, white);
-  color: var(--text-strong);
-  transition:
-    border-color 180ms ease-out,
-    box-shadow 180ms ease-out,
-    transform 180ms ease-out,
-    background-color 180ms ease-out;
+.form-group input {
+  padding: 0.875rem 1rem;
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  color: #111827;
+  background-color: #f9fafb; /* gray-50 */
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.auth-form input:focus {
-  border-color: color-mix(in oklab, var(--accent-deep) 54%, white);
-  background: color-mix(in oklab, var(--surface) 96%, white);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent-glow) 54%, transparent);
-  outline: 0;
-  transform: translateY(-1px);
+.form-group input:focus {
+  border-color: #6366f1; /* indigo-500 */
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
-.auth-success,
-.auth-error {
-  padding: 0.9rem 1rem;
-  border-radius: 8px;
+.form-group input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-.auth-success {
-  background: color-mix(in oklab, var(--accent-glow) 58%, white);
-  color: var(--text-strong);
-  animation: auth-success-arrive 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
 }
 
-.auth-error {
-  background: rgba(155, 53, 41, 0.08);
-  color: rgb(140, 47, 35);
-  animation: auth-error-pulse 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #4b5563; /* gray-600 */
+  cursor: pointer;
 }
 
-.auth-submit {
-  display: inline-flex;
+.remember-me input {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.forgot-password {
+  color: #6366f1;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* Alerts */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: slideIn 0.3s ease-out;
+}
+
+.alert-success {
+  background-color: #ecfdf5; /* emerald-50 */
+  color: #065f46; /* emerald-800 */
+  border: 1px solid #a7f3d0; /* emerald-200 */
+}
+
+.alert-error {
+  background-color: #fef2f2; /* red-50 */
+  color: #991b1b; /* red-800 */
+  border: 1px solid #fecaca; /* red-200 */
+}
+
+/* Submit Button */
+.submit-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.65rem;
-  min-height: 3.4rem;
-  margin-top: 0.25rem;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background-color: #111827; /* gray-900 */
   color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 1rem;
   font-weight: 700;
-  transition:
-    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 160ms ease-out,
-    filter 160ms ease-out;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
 }
 
-.auth-submit:hover:not(:disabled) {
+.submit-btn:hover:not(:disabled) {
+  background-color: #374151; /* gray-700 */
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px color-mix(in oklab, var(--accent-deep) 18%, transparent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.auth-submit:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
-.auth-submit:disabled {
-  opacity: 0.72;
+.submit-btn:disabled {
+  opacity: 0.7;
   cursor: wait;
 }
 
-.auth-submit__spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.36);
-  border-top-color: rgba(255, 255, 255, 0.96);
-  border-radius: 999px;
-  animation: auth-spin 760ms linear infinite;
+/* Spinner */
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.auth-note {
-  color: var(--text-soft);
+/* Redirect text */
+.auth-redirect {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #6b7280;
 }
 
-.auth-note a {
-  color: var(--text-strong);
+.auth-redirect a {
+  color: #111827;
   font-weight: 700;
+  text-decoration: none;
 }
 
-@media (max-width: 860px) {
-  .auth-page {
-    grid-template-columns: 1fr;
-  }
+.auth-redirect a:hover {
+  text-decoration: underline;
 }
 
-@media (max-width: 520px) {
-  .auth-page {
-    padding: 0.8rem;
-  }
-}
-
-@keyframes auth-success-arrive {
+/* Animations */
+@keyframes slideIn {
   from {
-    transform: translateY(8px) scale(0.98);
-    filter: blur(3px);
+    opacity: 0;
+    transform: translateY(-10px);
   }
-}
-
-@keyframes auth-error-pulse {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  30% {
-    transform: translateX(-6px);
-  }
-
-  60% {
-    transform: translateX(5px);
-  }
-}
-
-@keyframes auth-spin {
   to {
-    transform: rotate(1turn);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .auth-success,
-  .auth-error,
-  .auth-submit__spinner {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    animation-iteration-count: 1 !important;
-  }
-
-  .auth-form input,
-  .auth-submit {
-    transition-duration: 0.01ms !important;
-  }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

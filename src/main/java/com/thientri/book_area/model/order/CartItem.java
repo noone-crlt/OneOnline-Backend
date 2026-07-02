@@ -1,6 +1,6 @@
 package com.thientri.book_area.model.order;
 
-import com.thientri.book_area.model.catalog.Book;
+import com.thientri.book_area.model.catalog.BookEdition;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,9 +32,10 @@ public class CartItem {
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
 
+    // SỬA LỖI KIẾN TRÚC: Trỏ về Edition, không trỏ về Book
     @ManyToOne
-    @JoinColumn(name = "book_id", nullable = false)
-    private Book book;
+    @JoinColumn(name = "edition_id", nullable = false)
+    private BookEdition edition;
 
     @Column(name = "quantity", nullable = false)
     @Builder.Default

@@ -1,5 +1,6 @@
 <script setup>
 import { RouterView, useRoute } from 'vue-router'
+import { Toaster } from 'vue-sonner'
 
 const route = useRoute()
 </script>
@@ -11,6 +12,7 @@ const route = useRoute()
         <component :is="Component" :key="route.fullPath" />
       </Transition>
     </RouterView>
+    <Toaster position="top-right" richColors />
   </div>
 </template>
 

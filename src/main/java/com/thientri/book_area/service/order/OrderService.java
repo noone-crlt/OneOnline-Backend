@@ -4,234 +4,199 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.thientri.book_area.dto.request.order.OrderRequest;
-import com.thientri.book_area.dto.request.payment.WebhookRequest;
+import com.thientri.book_area.dto.request.order.CreateOrderRequest;
+import com.thientri.book_area.dto.response.order.CheckoutResponse;
 import com.thientri.book_area.dto.response.order.OrderResponse;
 import com.thientri.book_area.exception.BadRequestException;
 import com.thientri.book_area.exception.ResourceNotFoundException;
+import com.thientri.book_area.mapper.OrderMapper;
+import com.thientri.book_area.model.catalog.BookEdition;
+import com.thientri.book_area.model.engagement.UserLibrary;
+import com.thientri.book_area.model.order.Cart;
 import com.thientri.book_area.model.order.CartItem;
 import com.thientri.book_area.model.order.Order;
 import com.thientri.book_area.model.order.OrderItem;
 import com.thientri.book_area.model.order.OrderStatus;
-import com.thientri.book_area.model.order.OrderStatusHistory;
 import com.thientri.book_area.model.payment.Payment;
 import com.thientri.book_area.model.payment.PaymentMethod;
+import com.thientri.book_area.model.payment.PaymentStatus;
+import com.thientri.book_area.model.promotion.Coupon;
+import com.thientri.book_area.model.promotion.DiscountType;
 import com.thientri.book_area.model.user.Address;
 import com.thientri.book_area.model.user.User;
-import com.thientri.book_area.repository.catalog.BookRepository;
+import com.thientri.book_area.repository.engagement.UserLibraryRepository;
+import com.thientri.book_area.repository.order.CartRepository;
 import com.thientri.book_area.repository.order.OrderRepository;
-import com.thientri.book_area.repository.order.OrderStatusHistoryRepository;
 import com.thientri.book_area.repository.order.OrderStatusRepository;
 import com.thientri.book_area.repository.payment.PaymentMethodRepository;
 import com.thientri.book_area.repository.payment.PaymentRepository;
+import com.thientri.book_area.repository.promotion.CouponRepository;
 import com.thientri.book_area.repository.user.AddressRepository;
-import com.thientri.book_area.repository.user.UserRepository;
+import com.thientri.book_area.service.payment.VnPayService;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+    private final CartRepository cartRepository;
+    private final OrderRepository orderRepository;
+    private final OrderStatusRepository orderStatusRepository;
+    private final AddressRepository addressRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+    private final PaymentRepository paymentRepository;
+    private final CouponRepository couponRepository;
+    private final UserLibraryRepository libraryRepository;
+    private final OrderMapper orderMapper;
+    private final VnPayService vnPayService;
 
-        private final UserRepository userRepository;
-        private final AddressRepository addressRepository;
-        private final OrderStatusRepository orderStatusRepository;
-        private final OrderStatusHistoryRepository orderStatusHistoryRepository;
-        private final PaymentRepository paymentRepository;
-        private final PaymentMethodRepository paymentMethodRepository;
-        private final OrderRepository orderRepository;
-        private final BookRepository bookRepository;
+    @Transactional
+    public CheckoutResponse checkout(User user, CreateOrderRequest request, String clientIp) {
+        Cart cart = cartRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new BadRequestException("Giỏ hàng đang trống."));
+        if (cart.getCartItems().isEmpty()) throw new BadRequestException("Giỏ hàng đang trống.");
 
-        // Phương thức đặt hàng
-        @Transactional
-        public OrderResponse placeOrder(String email, OrderRequest request) {
-                // 1. Kiểm tra User và Giỏ hàng
-                User user = userRepository.findByEmail(email)
-                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng!"));
-
-                if (request.getSelectedCartItemIds() == null || request.getSelectedCartItemIds().isEmpty()) {
-                        throw new BadRequestException("Bạn chưa chọn sản phẩm nào để đặt hàng!");
-                }
-
-                // 2. Kiểm tra Địa chỉ & Phương thức thanh toán
-                Address address = addressRepository.findById(request.getAddressId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay dia chi giao hàng!"));
-
-                PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getPaymentMethodId())
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Khong tim thay phuong thuc thanh toan!"));
-
-                // 3. Khởi tạo đơn hàng
-                // Giả sử Status ID = 1 là "PENDING" (Chờ xác nhận / Chờ thanh toán)
-                OrderStatus initialStatus = orderStatusRepository.findById(1L)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Thiếu dữ liệu trạng thái đơn hàng (ID=1) trong DB!"));
-
-                String uniqueOrderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-                Order order = Order.builder()
-                                .orderCode(uniqueOrderCode)
-                                .user(user)
-                                .address(address)
-                                .orderStatus(initialStatus)
-                                .totalAmount(BigDecimal.ZERO) // Tạm thời để 0, Sẽ tính lại ngay bên dưới
-                                .build();
-
-                // 4. Lấy đồ từ Cart chuyển sang OrderItem, trừ Tồn kho và Tính tiền
-                BigDecimal totalAmount = BigDecimal.ZERO;
-
-                // Chỉ lấy những CartItem được chọn trong OrderRequest
-                List<CartItem> selectedItems = user.getCart().getCartItems().stream()
-                                .filter(item -> request.getSelectedCartItemIds().contains(item.getId())).toList();
-
-                if (selectedItems.isEmpty()) {
-                        throw new BadRequestException("Không tìm thấy sản phẩm nào trong giỏ hàng của bạn!");
-                }
-
-                for (CartItem cartItem : selectedItems) {
-                        var book = cartItem.getBook();
-
-                        if (book.getStock() < cartItem.getQuantity()) {
-                                throw new BadRequestException(
-                                                "Sách " + book.getTitle() + " chỉ còn " + book.getStock()
-                                                                + " sản phẩm trong kho!");
-                        }
-
-                        // Trừ tồn kho thực tế (Giữ hàng khi khách đang ở bước đặt hàng, tránh tình
-                        // trạng oversell)
-                        book.setStock(book.getStock() - cartItem.getQuantity());
-                        bookRepository.save(book);
-
-                        // Chốt giá và tạo ỎderItem
-                        OrderItem orderItem = OrderItem.builder()
-                                        .order(order)
-                                        .book(book)
-                                        .quantity(cartItem.getQuantity())
-                                        .price(book.getPrice()) // Lấy giá hiện tại của sách làm giá bán
-                                        .build();
-
-                        order.getOrderItems().add(orderItem);
-
-                        // Cộng dồn tổng tiền
-                        BigDecimal itemTotal = book.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
-                        totalAmount = totalAmount.add(itemTotal);
-                }
-
-                // 5. Cập nhật tổng tiền cho đơn hàng
-                order.setTotalAmount(totalAmount);
-
-                // 6. Lưu đơn hàng (các OrderItem sẽ tự động được lưu nhờ Cascade)
-                Order savedOrder = orderRepository.save(order);
-
-                // Khởi tạo thông tin thanh toán lưu xuống DB
-                Payment payment = Payment.builder()
-                                .order(savedOrder)
-                                .paymentMethod(paymentMethod)
-                                .amount(savedOrder.getTotalAmount())
-                                .status("PENDING") // Trạng thái ban đầu luôn là chờ thanh toán
-                                .build();
-                paymentRepository.save(payment);
-
-                // 7. Xóa giỏ hàng của người dùng (Chỉ xóa những CartItem đã được chọn để đặt
-                // hàng)
-                user.getCart().getCartItems().removeIf(item -> request.getSelectedCartItemIds().contains(item.getId()));
-
-                // 8. Sinh link QR code nếu chọn chuyển khoản trước
-                String qrCodeUrl = null;
-                if (paymentMethod.getName().equalsIgnoreCase("BANK_TRANSFER") || request.getPaymentMethodId() == 2L) {
-                        qrCodeUrl = generateVietQRLink(savedOrder.getTotalAmount(), savedOrder.getOrderCode());
-                }
-
-                OrderStatusHistory history = OrderStatusHistory.builder()
-                                .order(savedOrder)
-                                .status(initialStatus.getName())
-                                .build();
-                orderStatusHistoryRepository.save(history);
-
-                return OrderResponse.builder()
-                                .orderId(savedOrder.getId())
-                                .orderCode(savedOrder.getOrderCode())
-                                .totalAmount(savedOrder.getTotalAmount())
-                                .orderStatus(savedOrder.getOrderStatus().getName())
-                                .paymentMethod(paymentMethod.getName())
-                                .qrCodeUrl(qrCodeUrl)
-                                .build();
+        boolean physical = cart.getCartItems().stream()
+                .anyMatch(item -> "PHYSICAL".equals(item.getEdition().getFormat()));
+        Address address = null;
+        if (physical) {
+            if (request.getAddressId() == null) {
+                throw new BadRequestException("Vui lòng chọn địa chỉ nhận sách.");
+            }
+            address = addressRepository.findById(request.getAddressId())
+                    .filter(item -> item.getUser().getId().equals(user.getId()))
+                    .orElseThrow(() -> new BadRequestException("Địa chỉ giao hàng không hợp lệ."));
+        }
+        PaymentMethod method = paymentMethodRepository.findById(request.getPaymentMethodId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phương thức thanh toán."));
+        if (!List.of("VNPAY", "COD").contains(method.getName().toUpperCase())) {
+            throw new BadRequestException("Phương thức thanh toán này chưa được hỗ trợ.");
+        }
+        if ("COD".equalsIgnoreCase(method.getName()) && cart.getCartItems().stream()
+                .anyMatch(item -> !"PHYSICAL".equals(item.getEdition().getFormat()))) {
+            throw new BadRequestException("Sách điện tử cần được thanh toán trực tuyến qua VNPay.");
         }
 
-        // Phương thức hỗ trợ sinh link VietQR cho chuyển khoản ngân hàng
-        private String generateVietQRLink(BigDecimal amount, String orderCode) {
-                String bankId = "VCB"; // Mã ngân hàng (Vietctinbank, VCB, MB, ACB,...)
-                String accountNo = "4384039741";
-                String accountName = "Công ty TNHH Book Area";
+        BigDecimal subTotal = cart.getCartItems().stream()
+                .map(item -> item.getEdition().getSalePrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal discount = calculateDiscount(request.getCouponCode(), subTotal);
+        BigDecimal shippingFee = physical ? BigDecimal.valueOf(30000) : BigDecimal.ZERO;
+        OrderStatus pending = orderStatusRepository.findByName("PENDING")
+                .orElseThrow(() -> new IllegalStateException("Thiếu trạng thái đơn hàng PENDING."));
 
-                return String.format(
-                                "https://img.vietqr.io/image/%s-%s-compact2.png?amount=%s&addInfo=%s&accountName=%s",
-                                bankId, accountNo, amount.toBigInteger().toString(), orderCode,
-                                accountName.replace(" ", "%20"));
+        Order order = Order.builder()
+                .orderCode("BA" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase())
+                .user(user).orderStatus(pending)
+                .recipientName(physical ? address.getRecipientName() : null)
+                .recipientPhone(physical ? address.getRecipientPhone() : null)
+                .shippingAddressLine(physical ? address.getAddressLine() : null)
+                .shippingProvinceName(physical ? address.getProvinceName() : null)
+                .shippingDistrictName(physical ? address.getDistrictName() : null)
+                .shippingWardName(physical ? address.getWardName() : null)
+                .subTotal(subTotal).shippingFee(shippingFee).discountAmount(discount)
+                .appliedCouponCode(normalizeCoupon(request.getCouponCode()))
+                .totalAmount(subTotal.add(shippingFee).subtract(discount)).build();
+
+        for (CartItem cartItem : cart.getCartItems()) {
+            BookEdition edition = cartItem.getEdition();
+            validateAndReserve(edition, cartItem.getQuantity(), user);
+            order.addOrderItem(OrderItem.builder().edition(edition).quantity(cartItem.getQuantity())
+                    .originalPrice(edition.getOriginalPrice()).price(edition.getSalePrice()).build());
         }
+        orderRepository.save(order);
 
-        // Hàm xử lý Webhook từ ngân hàng sau khi khách đã thanh toán chuyển khoản
-        @Transactional
-        public void handlePaymentWebhook(WebhookRequest request) {
-                String content = request.getTransactionContent().toUpperCase().trim();
+        Payment payment = paymentRepository.save(Payment.builder().order(order).paymentMethod(method)
+                .amount(order.getTotalAmount()).status(PaymentStatus.PENDING).build());
+        cart.getCartItems().clear();
+        cartRepository.save(cart);
 
-                // 1. Tối ưu: Dùng Regex bóc tách chính xác Mã đơn hàng (Format: ORD- kèm 8 ký
-                // tự)
-                // // Giả sử mã đơn hàng luôn bắt đầu bằng "ORD-"
-                Matcher matcher = Pattern.compile("ORD-[A-Z0-9]{8}").matcher(content);
-                if (!matcher.find()) {
-                        throw new BadRequestException(
-                                        "Không tìm thấy mã đơn hàng hợp lệ trong nội dung giao dịch: " + content);
-                }
-
-                String extractedOrderCode = matcher.group();
-
-                Order order = orderRepository.findByOrderCode(extractedOrderCode)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Không tìm thấy đơn hàng với mã: " + extractedOrderCode));
-
-                // 2.Kiểm tra trạng thái, nếu đã thanh toán thì bỏ qua
-                if (order.getOrderStatus().getName().equalsIgnoreCase("COMPLETED")) {
-                        return;
-                }
-
-                // 3. Kiểm tra số tiền có khớp không
-                if (request.getAmountIn().compareTo(order.getTotalAmount()) >= 0) {
-
-                        // Lấy trạng thái COMPLETED từ DB (Giả sử ID=10 là COMPLETED)
-                        OrderStatus completedStatus = orderStatusRepository.findById(10L)
-                                        .orElseThrow(() -> new ResourceNotFoundException(
-                                                        "Thiếu dữ liệu trạng thái đơn hàng (ID=10) trong DB!"));
-
-                        // Cập nhật đơn hàng
-                        order.setOrderStatus(completedStatus);
-                        orderRepository.save(order);
-
-                        // Ghi nhận lịch sử trạng thái: Đã thanh toán thành công
-                        OrderStatusHistory history = OrderStatusHistory.builder()
-                                        .order(order)
-                                        .status(completedStatus.getName())
-                                        .build();
-                        orderStatusHistoryRepository.save(history);
-
-                        // Cập nhật lịch sử thanh toán kèm thời gian thực tế
-                        Payment payment = paymentRepository.findByOrderId(order.getId())
-                                        .orElseThrow(() -> new ResourceNotFoundException(
-                                                        "Không tìm thấy thông tin thanh toán cho đơn hàng này!"));
-
-                        payment.setStatus("COMPLETED");
-                        payment.setPaidAt(LocalDateTime.now()); // BỔ SUNG: Cập nhật giờ thanh toán thực tế
-                        paymentRepository.save(payment);
-
-                } else {
-                        throw new BadRequestException(
-                                        "Số tiền chuyển khoản không đủ cho đơn hàng: " + order.getOrderCode());
-                }
+        if ("COD".equalsIgnoreCase(method.getName())) {
+            return CheckoutResponse.builder().orderCode(order.getOrderCode()).paymentStatus(payment.getStatus().name()).build();
         }
+        return CheckoutResponse.builder().orderCode(order.getOrderCode()).paymentStatus(payment.getStatus().name())
+                .paymentUrl(vnPayService.createPaymentUrl(order, clientIp)).build();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> history(User user, int page, int size) {
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(page, size))
+                .map(orderMapper::toOrderResponse);
+    }
+
+    @Transactional
+    public Payment handleVnPayReturn(java.util.Map<String, String> params) {
+        if (!vnPayService.verify(params)) throw new BadRequestException("Chữ ký VNPay không hợp lệ.");
+        String orderCode = params.get("vnp_TxnRef");
+        Payment payment = paymentRepository.findByOrderOrderCode(orderCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch."));
+        if (payment.getStatus() != PaymentStatus.PENDING) return payment;
+
+        BigDecimal paidAmount = new BigDecimal(params.getOrDefault("vnp_Amount", "0")).divide(BigDecimal.valueOf(100));
+        boolean successful = "00".equals(params.get("vnp_ResponseCode"))
+                && "00".equals(params.get("vnp_TransactionStatus"))
+                && paidAmount.compareTo(payment.getAmount()) == 0;
+        payment.setTransactionId(params.get("vnp_TransactionNo"));
+        payment.setGatewayResponse(params.toString());
+        payment.setStatus(successful ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        if (successful) {
+            payment.setPaidAt(LocalDateTime.now());
+            OrderStatus confirmed = orderStatusRepository.findByName("CONFIRMED")
+                    .orElseThrow(() -> new IllegalStateException("Thiếu trạng thái đơn hàng CONFIRMED."));
+            payment.getOrder().setOrderStatus(confirmed);
+            grantDigitalBooks(payment.getOrder());
+        } else {
+            releaseReservation(payment.getOrder());
+        }
+        return paymentRepository.save(payment);
+    }
+
+    private void validateAndReserve(BookEdition edition, int quantity, User user) {
+        if (!Boolean.TRUE.equals(edition.getIsActive())) throw new BadRequestException("Có sách không còn được bán.");
+        if ("PHYSICAL".equals(edition.getFormat())) {
+            if (edition.getStock() == null || edition.getStock() < quantity) throw new BadRequestException("Số lượng tồn kho không đủ.");
+            edition.setStock(edition.getStock() - quantity);
+        } else if (libraryRepository.existsByUserIdAndEditionId(user.getId(), edition.getId())) {
+            throw new BadRequestException("Bạn đã sở hữu một sách điện tử trong giỏ hàng.");
+        }
+    }
+
+    private void grantDigitalBooks(Order order) {
+        order.getOrderItems().stream().map(OrderItem::getEdition)
+                .filter(edition -> !"PHYSICAL".equals(edition.getFormat()))
+                .filter(edition -> !libraryRepository.existsByUserIdAndEditionId(order.getUser().getId(), edition.getId()))
+                .forEach(edition -> libraryRepository.save(UserLibrary.builder().user(order.getUser()).edition(edition).build()));
+    }
+
+    private void releaseReservation(Order order) {
+        order.getOrderItems().stream()
+                .filter(item -> "PHYSICAL".equals(item.getEdition().getFormat()))
+                .forEach(item -> item.getEdition().setStock(item.getEdition().getStock() + item.getQuantity()));
+        if (order.getAppliedCouponCode() != null) {
+            couponRepository.findByCode(order.getAppliedCouponCode()).ifPresent(coupon ->
+                    coupon.setUsedCount(Math.max(0, coupon.getUsedCount() - 1)));
+        }
+    }
+
+    private BigDecimal calculateDiscount(String code, BigDecimal subTotal) {
+        if (code == null || code.isBlank()) return BigDecimal.ZERO;
+        Coupon coupon = couponRepository.findByCode(code.trim().toUpperCase())
+                .orElseThrow(() -> new BadRequestException("Mã giảm giá không tồn tại."));
+        if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(LocalDateTime.now())) throw new BadRequestException("Mã giảm giá đã hết hạn.");
+        if (coupon.getUsageLimit() != null && coupon.getUsedCount() >= coupon.getUsageLimit()) throw new BadRequestException("Mã giảm giá đã hết lượt sử dụng.");
+        if (subTotal.compareTo(coupon.getMinOrderValue()) < 0) throw new BadRequestException("Đơn hàng chưa đạt giá trị tối thiểu của mã giảm giá.");
+        BigDecimal discount = coupon.getDiscountType() == DiscountType.PERCENTAGE
+                ? subTotal.multiply(coupon.getDiscountValue()).divide(BigDecimal.valueOf(100)) : coupon.getDiscountValue();
+        if (coupon.getMaxDiscount() != null && discount.compareTo(coupon.getMaxDiscount()) > 0) discount = coupon.getMaxDiscount();
+        coupon.setUsedCount(coupon.getUsedCount() + 1);
+        return discount.min(subTotal);
+    }
+
+    private String normalizeCoupon(String code) { return code == null || code.isBlank() ? null : code.trim().toUpperCase(); }
 }

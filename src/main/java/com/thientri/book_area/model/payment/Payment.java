@@ -3,12 +3,12 @@ package com.thientri.book_area.model.payment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
-
 import com.thientri.book_area.model.order.Order;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,11 +41,22 @@ public class Payment {
     @JoinColumn(name = "payment_method_id", nullable = false)
     private PaymentMethod paymentMethod;
 
-    @Column(name = "amount", precision = 10, scale = 2, nullable = false)
+    @Column(name = "amount", precision = 18, scale = 0, nullable = false)
     private BigDecimal amount;
 
-    @Column(name = "status", length = 50)
-    private String status;
+    // SỬA: Ép kiểu Enum an toàn tuyệt đối
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 50, nullable = false)
+    @Builder.Default
+    private PaymentStatus status = PaymentStatus.PENDING;
+
+    // THÊM MỚI: Cực kỳ quan trọng để đối soát với VNPay/MoMo
+    @Column(name = "transaction_id", length = 255)
+    private String transactionId;
+
+    // THÊM MỚI: Lưu log JSON phản hồi từ cổng thanh toán (để debug khi có lỗi)
+    @Column(name = "gateway_response", columnDefinition = "NVARCHAR(MAX)")
+    private String gatewayResponse;
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;

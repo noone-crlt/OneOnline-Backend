@@ -1,38 +1,30 @@
 package com.thientri.book_area.repository.payment;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
 import com.thientri.book_area.model.payment.Payment;
-import com.thientri.book_area.repository.admin.MonthlyRevenueProjection;
+import com.thientri.book_area.model.payment.PaymentStatus;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
-
+    // Tìm giao dịch bằng mã của ngân hàng/MoMo trả về
+    Optional<Payment> findByTransactionId(String transactionId);
+    
+    // Tìm chứng từ thanh toán của một đơn hàng cụ thể
     Optional<Payment> findByOrderId(Long orderId);
 
-    @Query("""
-            select coalesce(sum(p.amount), 0)
-            from Payment p
-            where upper(coalesce(p.status, '')) in ('PAID', 'COMPLETED', 'SUCCESS')
-            """)
-    BigDecimal sumPaidRevenue();
+    Optional<Payment> findByOrderOrderCode(String orderCode);
 
-    @Query("""
-            select
-                year(p.paidAt) as yearValue,
-                month(p.paidAt) as monthValue,
-                coalesce(sum(p.amount), 0) as totalRevenue
-            from Payment p
-            where p.paidAt is not null
-              and upper(coalesce(p.status, '')) in ('PAID', 'COMPLETED', 'SUCCESS')
-            group by year(p.paidAt), month(p.paidAt)
-            order by year(p.paidAt), month(p.paidAt)
-            """)
-    List<MonthlyRevenueProjection> sumPaidRevenueByMonth();
+    @Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status")
+    BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);
+
+    @Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status and p.paidAt >= :start and p.paidAt < :end")
+    BigDecimal sumAmountByStatusBetween(
+            @Param("status") PaymentStatus status,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
 }

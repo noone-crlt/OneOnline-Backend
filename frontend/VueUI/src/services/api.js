@@ -14,6 +14,11 @@ function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
 }
 
+function normalizeToken(token) {
+  const value = typeof token === 'string' ? token.trim() : ''
+  return value && value !== 'null' && value !== 'undefined' ? value : ''
+}
+
 function buildUrl(path) {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path
@@ -48,7 +53,7 @@ function readStoredSession() {
 
   try {
     const parsed = JSON.parse(raw)
-    const accessToken = parsed.accessToken ?? parsed.token ?? ''
+    const accessToken = normalizeToken(parsed.accessToken ?? parsed.token)
 
     if (!accessToken || !parsed.user) {
       return null
@@ -71,14 +76,16 @@ export function setStoredSession(session) {
     return session
   }
 
-  if (!session?.accessToken || !session?.user) {
+  const accessToken = normalizeToken(session?.accessToken ?? session?.token)
+
+  if (!accessToken || !session?.user) {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     return null
   }
 
   const normalized = {
-    accessToken: session.accessToken,
-    token: session.accessToken,
+    accessToken,
+    token: accessToken,
     refreshToken: session.refreshToken ?? '',
     tokenType: session.tokenType ?? 'Bearer',
     user: session.user,
@@ -108,9 +115,12 @@ export function clearStoredSession() {
 
 export function authHeaders(headers = {}, token = getToken()) {
   const normalized = new Headers(headers)
+  const accessToken = normalizeToken(token)
 
-  if (token) {
-    normalized.set('Authorization', `Bearer ${token}`)
+  if (accessToken) {
+    normalized.set('Authorization', `Bearer ${accessToken}`)
+  } else {
+    normalized.delete('Authorization')
   }
 
   return normalized
@@ -149,13 +159,24 @@ export async function apiFetch(path, init = {}) {
 
 function normalizeAuthResponse(payload) {
   const accessToken = payload?.accessToken ?? payload?.token ?? ''
+  const user = payload?.user ?? (
+    payload?.userId && payload?.email
+      ? {
+          id: payload.userId,
+          email: payload.email,
+          fullName: payload.fullName ?? '',
+          phone: payload.phone ?? '',
+          roles: Array.isArray(payload.roles) ? payload.roles : [],
+        }
+      : null
+  )
 
   return {
     accessToken,
     token: accessToken,
     refreshToken: payload?.refreshToken ?? '',
     tokenType: payload?.tokenType ?? 'Bearer',
-    user: payload?.user ?? null,
+    user,
   }
 }
 
@@ -193,6 +214,94 @@ export function logout() {
   clearStoredSession()
 }
 
-export function getBooks() {
-  return apiFetch('/api/books')
+export async function getBooks() {
+  const payload = await apiFetch('/api/books')
+  if (payload && payload.content && Array.isArray(payload.content)) {
+    return payload.content
+  }
+  return Array.isArray(payload) ? payload : []
+}
+
+export function getBookBySlug(slug) {
+  return apiFetch(`/api/books/${slug}`)
+}
+
+export function updateCurrentUserProfile(payload) {
+  return apiFetch('/api/auth/me', {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: payload,
+  })
+}
+
+export function getCart() {
+  return apiFetch('/api/cart', { headers: authHeaders() })
+}
+
+export function addCartItem(editionId, quantity = 1) {
+  return apiFetch('/api/cart/items', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: { editionId, quantity },
+  })
+}
+
+export function updateCartItem(itemId, quantity) {
+  return apiFetch(`/api/cart/items/${itemId}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: { quantity },
+  })
+}
+
+export function removeCartItem(itemId) {
+  return apiFetch(`/api/cart/items/${itemId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
+export function getCheckoutOptions() {
+  return apiFetch('/api/checkout/options', { headers: authHeaders() })
+}
+
+export function createOrder(payload) {
+  return apiFetch('/api/orders', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: payload,
+  })
+}
+
+export function getOrderHistory(page = 0, size = 10) {
+  return apiFetch(`/api/orders?page=${page}&size=${size}`, { headers: authHeaders() })
+}
+
+export function getReadingUrl(editionId) {
+  return apiFetch(`/api/reading/${editionId}/url`, { headers: authHeaders() })
+}
+
+export async function getUserLibrary(page = 0, size = 20) {
+  const payload = await apiFetch(`/api/library?page=${page}&size=${size}`, { headers: authHeaders() })
+  return Array.isArray(payload?.content) ? payload.content : []
+}
+
+export function getFileUrl(path) {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  let cleanPath = path.startsWith('/') ? path.substring(1) : path
+
+  // Xử lý các định dạng ảnh/PDF cũ và mới
+  if (cleanPath.startsWith('covers/')) {
+    // Định dạng mới, không cần prefix 'sach/'
+    // cleanPath = cleanPath
+  } else if (cleanPath.startsWith('anhbia/')) {
+    cleanPath = `sach/${cleanPath}`
+  } else if (cleanPath.startsWith('book/')) {
+    cleanPath = `sach/${cleanPath.substring('book/'.length)}`
+  }
+
+  return `http://localhost:9000/book-area-files/${cleanPath}`
 }

@@ -1,150 +1,91 @@
 package com.thientri.book_area.service.order;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.thientri.book_area.dto.request.order.CartItemRequest;
-import com.thientri.book_area.dto.response.catalog.BookResponse;
-import com.thientri.book_area.dto.response.order.CartItemResponse;
+import com.thientri.book_area.dto.request.order.AddToCartRequest;
+import com.thientri.book_area.dto.response.order.CartResponse;
 import com.thientri.book_area.exception.BadRequestException;
-import com.thientri.book_area.exception.ForbiddenException;
 import com.thientri.book_area.exception.ResourceNotFoundException;
-import com.thientri.book_area.model.catalog.Book;
+import com.thientri.book_area.mapper.OrderMapper;
+import com.thientri.book_area.model.catalog.BookEdition;
 import com.thientri.book_area.model.order.Cart;
 import com.thientri.book_area.model.order.CartItem;
 import com.thientri.book_area.model.user.User;
-import com.thientri.book_area.repository.catalog.BookRepository;
-import com.thientri.book_area.repository.order.CartItemRepository;
+import com.thientri.book_area.repository.catalog.BookEditionRepository;
 import com.thientri.book_area.repository.order.CartRepository;
-import com.thientri.book_area.repository.user.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class CartService {
-    private final UserRepository userRepository;
-    private final BookRepository bookRepository;
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
+    private final BookEditionRepository editionRepository;
+    private final OrderMapper orderMapper;
 
-    private BookResponse mapBookResponse(Book book) {
-        return BookResponse.builder()
-                .id(book.getId())
-                .title(book.getTitle())
-                .price(book.getPrice())
-                .stock(book.getStock())
-                .publisherName(book.getPublisher().getName())
-                .build();
+    @Transactional(readOnly = true)
+    public CartResponse getCart(User user) {
+        return orderMapper.toCartResponse(findCart(user));
     }
 
-    private CartItemResponse mapToResponse(CartItem cartItem) {
-        return CartItemResponse.builder()
-                .id(cartItem.getId())
-                .cartId(cartItem.getCart().getId())
-                .bookResponse(mapBookResponse(cartItem.getBook()))
-                .quantity(cartItem.getQuantity())
-                .build();
-    }
-
-    // Kiểm tra người dùng trước khi thao tác giỏ hàng
-    private User checkUser(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng!"));
-    }
-
-    // Thêm sản phẩm vào giỏ hàng
     @Transactional
-    public void addToCart(String email, CartItemRequest request) {
-        // 1. Tìm chủ nhân của chiếc thẻ (User)
-        // 2. Lấy giỏ hàng của người đó (Hoặc tạo mới nếu chưa có để đề phòng rủi ro)
-        User user = checkUser(email);
-        Cart cart = user.getCart();
-        if (cart == null) {
-            user.initCart();
-            cart = user.getCart();
-        }
+    public CartResponse addItem(User user, AddToCartRequest request) {
+        Cart cart = findCart(user);
+        BookEdition edition = editionRepository.findById(request.getEditionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiên bản sách."));
+        validateAvailability(edition, request.getQuantity());
 
-        // 3. Tìm cuốn sách mà khách muốn thêm
-        Book book = bookRepository.findById(request.getBookId())
-                .orElseThrow(() -> new ResourceNotFoundException("Sách không tồn tại!"));
-
-        // 4. KIỂM TRA SÁCH ĐÃ CÓ TRONG GIỎ HAY CHƯA
-        Optional<CartItem> existingItem = cart.getCartItems().stream()
-                .filter(item -> item.getBook().getId().equals(book.getId())).findFirst();
-        if (existingItem.isPresent()) {
-            CartItem cartItem = existingItem.get();
-            if (cartItem.getQuantity() + request.getQuantity() <= book.getStock()) {
-                cartItem.setQuantity(cartItem.getQuantity() + request.getQuantity());
-            } else {
-                throw new BadRequestException("Sách đã hết hàng, quý khách vui lòng chờ nhập kho!");
-            }
+        CartItem existing = cart.getCartItems().stream()
+                .filter(item -> item.getEdition().getId().equals(edition.getId()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            int quantity = existing.getQuantity() + request.getQuantity();
+            validateAvailability(edition, quantity);
+            existing.setQuantity(quantity);
         } else {
-            if (book.getStock() - request.getQuantity() >= 0) {
-                CartItem newCartItem = CartItem.builder()
-                        .cart(cart)
-                        .book(book)
-                        .quantity(request.getQuantity())
-                        .build();
-                cart.getCartItems().add(newCartItem);
-            } else {
-                throw new BadRequestException("Sách đã hết hàng, quý khách vui lòng chờ nhập kho!");
-            }
+            cart.addCartItem(CartItem.builder().edition(edition).quantity(request.getQuantity()).build());
         }
-
-        // 5. Lưu lại giỏ hàng
-        cartRepository.save(cart);
+        return orderMapper.toCartResponse(cartRepository.save(cart));
     }
 
-    // Lấy ra giỏ hàng của người dùng
-    public List<CartItemResponse> getCart(String email) {
-        Cart cart = checkUser(email).getCart();
-        if (cart == null) {
-            return new ArrayList<>();// Trả về danh sách rỗng
-        }
-        return cart.getCartItems().stream().map(this::mapToResponse).toList();
+    @Transactional
+    public CartResponse updateItem(User user, Long itemId, int quantity) {
+        Cart cart = findCart(user);
+        CartItem item = ownedItem(cart, itemId);
+        validateAvailability(item.getEdition(), quantity);
+        item.setQuantity(quantity);
+        return orderMapper.toCartResponse(cartRepository.save(cart));
     }
 
-    // Xóa sách khỏi giỏ hàng
-    public CartItemResponse deleteCartItem(String email, Long cartItemId) {
-        Cart cart = checkUser(email).getCart();
-
-        CartItem deletedCartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay sach trong gio de xoa!"));
-
-        if (cart.getId().equals(deletedCartItem.getCart().getId())) {
-            cartItemRepository.deleteById(cartItemId);
-        } else {
-            throw new ForbiddenException(
-                    "Id gio hang cua sach trong gio hang khong trung voi Id gio hang cua nguoi dung!");
-        }
-        return mapToResponse(deletedCartItem);
+    @Transactional
+    public CartResponse removeItem(User user, Long itemId) {
+        Cart cart = findCart(user);
+        cart.removeCartItem(ownedItem(cart, itemId));
+        return orderMapper.toCartResponse(cartRepository.save(cart));
     }
 
-    // Cập nhật số lượng sách trong kho
-    public CartItemResponse updateQuantity(String email, Long cartItemId, Integer newQuantity) {
-        Cart cart = checkUser(email).getCart();
+    private Cart findCart(User user) {
+        return cartRepository.findByUserId(user.getId()).orElseGet(() -> {
+            Cart cart = Cart.builder().user(user).build();
+            return cartRepository.save(cart);
+        });
+    }
 
-        CartItem updatedCartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay sach trong gio de cap nhat!"));
+    private CartItem ownedItem(Cart cart, Long itemId) {
+        return cart.getCartItems().stream().filter(item -> item.getId().equals(itemId)).findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm trong giỏ hàng."));
+    }
 
-        Book book = updatedCartItem.getBook();
-
-        if (cart.getId().equals(updatedCartItem.getCart().getId())) {
-            if (newQuantity <= book.getStock() && newQuantity > 0) {
-                updatedCartItem.setQuantity(newQuantity);
-            } else {
-                throw new BadRequestException(
-                        "Số lượng cập nhật không hợp lệ hoặc vượt quá tồn kho!");
-            }
-            return mapToResponse(cartItemRepository.save(updatedCartItem));
-        } else {
-            throw new ForbiddenException(
-                    "Id gio hang cua sach trong gio hang khong trung voi Id gio hang cua nguoi dung!");
+    private void validateAvailability(BookEdition edition, int quantity) {
+        if (!Boolean.TRUE.equals(edition.getIsActive())) {
+            throw new BadRequestException("Phiên bản sách hiện không còn được bán.");
+        }
+        if (!"PHYSICAL".equals(edition.getFormat()) && quantity > 1) {
+            throw new BadRequestException("Sách điện tử chỉ được mua một bản cho mỗi tài khoản.");
+        }
+        if ("PHYSICAL".equals(edition.getFormat()) && (edition.getStock() == null || edition.getStock() < quantity)) {
+            throw new BadRequestException("Số lượng sách trong kho không đủ.");
         }
     }
 }

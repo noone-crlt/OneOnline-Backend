@@ -5,8 +5,16 @@ import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserCouponId implements Serializable {
     @Column(name = "user_id")
     private Long userId;
@@ -14,7 +22,6 @@ public class UserCouponId implements Serializable {
     @Column(name = "coupon_id")
     private Long couponId;
 
-    // Bắt buộc phải có để JPA nhận diện tính duy nhất của khóa kép
     @Override
     public boolean equals(Object o) {
         if (this == o) {

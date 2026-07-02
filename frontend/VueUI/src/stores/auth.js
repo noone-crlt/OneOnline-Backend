@@ -69,6 +69,18 @@ export function getToken() {
   return state.accessToken
 }
 
+export function updateAuthUser(user) {
+  hydrateSession()
+  if (!state.accessToken || !user) return
+
+  applySession({
+    accessToken: state.accessToken,
+    refreshToken: state.refreshToken,
+    tokenType: 'Bearer',
+    user: { ...state.user, ...user },
+  })
+}
+
 export async function login(payload) {
   const session = await apiLogin(payload)
   applySession(session)

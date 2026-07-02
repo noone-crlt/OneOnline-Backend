@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { use } from 'echarts/core'
-import { BarChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import {
   GridComponent,
   LegendComponent,
@@ -10,7 +10,7 @@ import {
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 
-use([CanvasRenderer, BarChart, GridComponent, LegendComponent, TooltipComponent])
+use([CanvasRenderer, BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 const props = defineProps({
   stats: {
@@ -25,19 +25,25 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  type: {
+    type: String,
+    default: 'growth', // 'growth' or 'revenue'
+  },
 })
 
 const emit = defineEmits(['retry'])
 
-function formatMonth(month) {
-  const [year, monthNumber] = month.split('-')
-  const normalizedMonth = Number(monthNumber)
 
-  if (!year || Number.isNaN(normalizedMonth)) {
-    return month
+function formatMonth(dateString) {
+  const parts = dateString.split('-')
+  if (parts.length === 3) {
+    const [year, month, day] = parts
+    return `${day}/${month}`
+  } else if (parts.length === 2) {
+    const [year, month] = parts
+    return `T${Number(month)}/${year}`
   }
-
-  return `T${normalizedMonth}/${year}`
+  return dateString
 }
 
 function formatCompactValue(value) {
@@ -55,111 +61,130 @@ function formatCompactValue(value) {
 const chartOption = computed(() => {
   const axisLabels = props.stats.map((item) => formatMonth(item.month))
 
+  const isRevenue = props.type === 'revenue'
+  const colors = isRevenue ? ['#10b981'] : ['#18181b', '#71717a', '#0ea5e9']
+
+  let series = []
+  if (isRevenue) {
+    series = [
+      {
+        name: 'Doanh thu',
+        type: 'line',
+        smooth: true,
+        symbolSize: 6,
+        areaStyle: { opacity: 0.03 },
+        data: props.stats.map((item) => item.revenue || 0),
+      }
+    ]
+  } else {
+    series = [
+      {
+        name: 'Người dùng',
+        type: 'bar',
+        barMaxWidth: 12,
+        barGap: '30%',
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
+        data: props.stats.map((item) => item.newUsers),
+      },
+      {
+        name: 'Sách mới',
+        type: 'bar',
+        barMaxWidth: 12,
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
+        data: props.stats.map((item) => item.newBooks),
+      },
+      {
+        name: 'Bình luận',
+        type: 'bar',
+        barMaxWidth: 12,
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
+        data: props.stats.map((item) => item.comments),
+      },
+    ]
+  }
+
   return {
-    animationDuration: 700,
+    animationDuration: 1200,
     animationEasing: 'cubicOut',
-    color: ['#6b4f3f', '#c98b47', '#9f6c3d', '#6f8f7a', '#b65c4b'],
+    color: colors,
     grid: {
-      left: 8,
-      right: 12,
-      top: 52,
-      bottom: 8,
+      left: 0,
+      right: 0,
+      top: 40,
+      bottom: 0,
       containLabel: true,
     },
     legend: {
       top: 0,
       left: 0,
-      icon: 'roundRect',
-      itemWidth: 12,
-      itemHeight: 12,
+      icon: 'circle',
+      itemWidth: 10,
+      itemHeight: 10,
       textStyle: {
-        color: '#5f5147',
+        color: '#71717a',
+        fontFamily: 'Satoshi, sans-serif',
         fontSize: 12,
+        fontWeight: 500
       },
     },
     tooltip: {
       trigger: 'axis',
       axisPointer: {
-        type: 'shadow',
-        shadowStyle: {
-          color: 'rgba(107, 79, 63, 0.08)',
+        type: 'line',
+        lineStyle: {
+          color: 'rgba(0, 0, 0, 0.05)',
+          width: 2,
+          type: 'solid'
         },
       },
-      backgroundColor: 'rgba(255, 250, 244, 0.96)',
-      borderColor: 'rgba(124, 90, 63, 0.18)',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: 'rgba(226, 232, 240, 0.8)',
       borderWidth: 1,
+      padding: [12, 16],
       textStyle: {
-        color: '#34261d',
+        color: '#09090b',
+        fontFamily: 'Satoshi, sans-serif',
+        fontSize: 13,
+        fontWeight: 500
       },
-      valueFormatter: (value) =>
-        typeof value === 'number' ? value.toLocaleString('vi-VN') : String(value),
+      borderRadius: 12,
+      extraCssText: 'box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);',
+      valueFormatter: (value) => {
+        if (typeof value !== 'number') return String(value)
+        return isRevenue ? value.toLocaleString('vi-VN') + ' VNĐ' : value.toLocaleString('vi-VN')
+      },
     },
     xAxis: {
       type: 'category',
+      boundaryGap: true,
       data: axisLabels,
-      axisTick: {
-        show: false,
-      },
-      axisLine: {
-        lineStyle: {
-          color: 'rgba(117, 83, 57, 0.18)',
-        },
-      },
+      axisTick: { show: false },
+      axisLine: { show: false },
       axisLabel: {
-        color: '#5f5147',
+        color: '#71717a',
+        fontFamily: 'Satoshi, sans-serif',
         fontSize: 12,
+        fontWeight: 500,
+        margin: 16
       },
     },
     yAxis: {
       type: 'value',
       splitNumber: 4,
       axisLabel: {
-        color: '#7d6a5d',
+        color: '#a1a1aa',
+        fontFamily: 'Satoshi, sans-serif',
+        fontSize: 12,
         formatter: (value) => formatCompactValue(value),
       },
       splitLine: {
         lineStyle: {
-          color: 'rgba(117, 83, 57, 0.1)',
+          color: 'rgba(0, 0, 0, 0.04)',
+          type: 'dashed'
         },
       },
     },
-    series: [
-      {
-        name: 'Người dùng mới',
-        type: 'bar',
-        barMaxWidth: 18,
-        emphasis: { focus: 'series' },
-        data: props.stats.map((item) => item.newUsers),
-      },
-      {
-        name: 'Sách mới',
-        type: 'bar',
-        barMaxWidth: 18,
-        emphasis: { focus: 'series' },
-        data: props.stats.map((item) => item.newBooks),
-      },
-      {
-        name: 'Chương mới',
-        type: 'bar',
-        barMaxWidth: 18,
-        emphasis: { focus: 'series' },
-        data: props.stats.map((item) => item.newChapters),
-      },
-      {
-        name: 'Lượt đọc',
-        type: 'bar',
-        barMaxWidth: 18,
-        emphasis: { focus: 'series' },
-        data: props.stats.map((item) => item.views),
-      },
-      {
-        name: 'Bình luận',
-        type: 'bar',
-        barMaxWidth: 18,
-        emphasis: { focus: 'series' },
-        data: props.stats.map((item) => item.comments),
-      },
-    ],
+    series,
   }
 })
 </script>
@@ -167,7 +192,6 @@ const chartOption = computed(() => {
 <template>
   <div class="dashboard-bar-chart">
     <div v-if="loading" class="dashboard-bar-chart__loading" aria-live="polite">
-      <p class="dashboard-bar-chart__loading-copy">Đang tải dữ liệu...</p>
       <div class="dashboard-bar-chart__skeleton dashboard-bar-chart__skeleton--header"></div>
       <div class="dashboard-bar-chart__skeleton dashboard-bar-chart__skeleton--plot"></div>
     </div>
@@ -181,23 +205,32 @@ const chartOption = computed(() => {
       <p>Không có dữ liệu</p>
     </div>
 
-    <VChart
-      v-else
-      class="dashboard-bar-chart__canvas"
-      :option="chartOption"
-      autoresize
-    />
+    <div v-else class="chart-container">
+      <VChart
+        class="dashboard-bar-chart__canvas"
+        :option="chartOption"
+        autoresize
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .dashboard-bar-chart {
-  min-height: 23rem;
+  min-height: 24rem;
+  width: 100%;
+  height: 100%;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 24rem; /* Ensures the container has a fixed height for ECharts */
 }
 
 .dashboard-bar-chart__canvas {
   width: 100%;
-  min-height: 23rem;
+  height: 100%;
 }
 
 .dashboard-bar-chart__loading {
@@ -205,69 +238,65 @@ const chartOption = computed(() => {
   gap: 1rem;
 }
 
-.dashboard-bar-chart__loading-copy {
-  color: #5f5147;
-}
-
 .dashboard-bar-chart__skeleton {
-  border-radius: 1.15rem;
+  border-radius: 1.5rem;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.54), rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.54)),
-    rgba(255, 244, 229, 0.8);
-  background-size: 220% 100%;
-  animation: chart-skeleton-shift 1.2s linear infinite;
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent),
+    #f4f4f5;
+  background-size: 200% 100%;
+  animation: chart-shimmer 1.5s infinite;
 }
 
 .dashboard-bar-chart__skeleton--header {
-  height: 2.6rem;
+  height: 2.5rem;
+  width: 40%;
+  border-radius: 99px;
 }
 
 .dashboard-bar-chart__skeleton--plot {
-  min-height: 19rem;
+  min-height: 20rem;
 }
 
 .dashboard-bar-chart__state {
   display: grid;
   place-items: center;
-  gap: 0.9rem;
-  min-height: 23rem;
+  gap: 1rem;
+  min-height: 24rem;
   padding: 2rem;
-  border: 1px dashed rgba(117, 83, 57, 0.2);
-  border-radius: 1.35rem;
-  background: rgba(255, 251, 245, 0.86);
+  border: 1px dashed rgba(226, 232, 240, 0.8);
+  border-radius: 2rem;
+  background: #fafafa;
   text-align: center;
-  color: #5f5147;
+  color: #71717a;
+  font-family: 'Satoshi', sans-serif;
+  font-weight: 500;
 }
 
 .dashboard-bar-chart__state--error {
-  background: rgba(166, 85, 61, 0.06);
-  color: #7d3f31;
+  background: #fef2f2;
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 
 .dashboard-bar-chart__state button {
-  min-height: 2.85rem;
-  padding: 0.7rem 1.1rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #c98b47, #8d5b33);
+  padding: 0.75rem 1.25rem;
+  border-radius: 99px;
+  background: #18181b;
   color: white;
   font-weight: 600;
-  transition:
-    transform 180ms ease-out,
-    box-shadow 180ms ease-out;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .dashboard-bar-chart__state button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 26px rgba(141, 91, 51, 0.22);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(0,0,0,0.2);
 }
 
-@keyframes chart-skeleton-shift {
-  from {
-    background-position: 0 0;
-  }
-
-  to {
-    background-position: 220% 0;
-  }
+@keyframes chart-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 </style>
