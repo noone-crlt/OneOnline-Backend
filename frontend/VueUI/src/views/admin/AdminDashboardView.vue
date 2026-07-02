@@ -1,11 +1,13 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import gsap from 'gsap'
+import { PhUsers, PhBooks, PhBookOpenText, PhBookmarkSimple, PhPenNib, PhCurrencyDollar, PhChatCircleDots, PhWarningCircle, PhArrowsClockwise } from '@phosphor-icons/vue'
 
 import DashboardBarChart from '../../components/admin/DashboardBarChart.vue'
 import { getDashboardSummary, getMonthlyStats } from '../../services/adminDashboard'
 import { ApiError } from '../../services/api'
-import { authUser, logout } from '../../stores/auth'
+import { logout } from '../../stores/auth'
 
 const router = useRouter()
 
@@ -15,37 +17,34 @@ const loading = ref(true)
 const errorMessage = ref('')
 const monthlyStatsLoading = ref(true)
 const monthlyStatsError = ref('')
+const granularity = ref('monthly')
 
 const compactNumber = new Intl.NumberFormat('vi-VN')
+const currencyNumber = {
+  format: (value) => new Intl.NumberFormat('vi-VN').format(value) + ' VNĐ'
+}
 
 const summaryCards = computed(() => {
   const current = summary.value
-
   return [
-    { label: 'Tổng người dùng', value: current?.totalUsers ?? 0 },
-    { label: 'Tổng sách', value: current?.totalBooks ?? 0 },
-    { label: 'Tổng chương', value: current?.totalChapters ?? 0 },
-    { label: 'Tổng danh mục', value: current?.totalCategories ?? 0 },
-    { label: 'Tổng lượt đọc', value: current?.totalViews ?? 0 },
-    { label: 'Tổng bình luận', value: current?.totalComments ?? 0 },
-    { label: 'Báo cáo chờ xử lý', value: current?.pendingReports ?? 0 },
+    { label: 'Người dùng', value: compactNumber.format(current?.totalUsers ?? 0), icon: PhUsers, color: '#10b981' },
+    { label: 'Tác phẩm', value: compactNumber.format(current?.totalBooks ?? 0), icon: PhBooks, color: '#6366f1' },
+    { label: 'Chương audio', value: compactNumber.format(current?.totalChapters ?? 0), icon: PhBookOpenText, color: '#f59e0b' },
+    { label: 'Danh mục', value: compactNumber.format(current?.totalCategories ?? 0), icon: PhBookmarkSimple, color: '#ec4899' },
+    { label: 'Tác giả', value: compactNumber.format(current?.totalAuthors ?? 0), icon: PhPenNib, color: '#0ea5e9' },
+    { label: 'Bình luận', value: compactNumber.format(current?.totalComments ?? 0), icon: PhChatCircleDots, color: '#8b5cf6' },
+    { label: 'Doanh thu', value: currencyNumber.format(current?.totalRevenue ?? 0), icon: PhCurrencyDollar, color: '#ef4444' },
   ]
 })
 
 async function handleAuthFailure() {
   logout()
-  await router.replace({
-    name: 'login',
-    query: {
-      redirect: '/admin',
-    },
-  })
+  await router.replace({ name: 'login', query: { redirect: '/admin' } })
 }
 
 async function loadSummary() {
   loading.value = true
   errorMessage.value = ''
-
   try {
     summary.value = await getDashboardSummary()
   } catch (error) {
@@ -53,8 +52,7 @@ async function loadSummary() {
       await handleAuthFailure()
       return
     }
-
-    errorMessage.value = 'Không thể tải dữ liệu. Vui lòng thử lại.'
+    errorMessage.value = 'Không thể tải dữ liệu tổng quan.'
   } finally {
     loading.value = false
   }
@@ -63,17 +61,15 @@ async function loadSummary() {
 async function loadMonthlyStatsData() {
   monthlyStatsLoading.value = true
   monthlyStatsError.value = ''
-
   try {
-    monthlyStats.value = await getMonthlyStats()
+    monthlyStats.value = await getMonthlyStats(granularity.value)
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       await handleAuthFailure()
       return
     }
-
     monthlyStats.value = []
-    monthlyStatsError.value = 'Không thể tải dữ liệu. Vui lòng thử lại.'
+    monthlyStatsError.value = 'Không thể tải thống kê theo tháng.'
   } finally {
     monthlyStatsLoading.value = false
   }
@@ -81,550 +77,386 @@ async function loadMonthlyStatsData() {
 
 async function loadDashboard() {
   await Promise.all([loadSummary(), loadMonthlyStatsData()])
-}
-
-function handleLogout() {
-  logout()
-  router.replace('/login')
+  
+  await nextTick()
+  // GSAP Entrance Stagger
+  gsap.fromTo('.bento-item', 
+    { y: 40, opacity: 0, scale: 0.98 }, 
+    { y: 0, opacity: 1, scale: 1, stagger: 0.05, ease: 'back.out(1.5)', duration: 0.8, clearProps: 'all' }
+  )
 }
 
 onMounted(loadDashboard)
 </script>
 
 <template>
-  <main class="admin-layout">
-    <aside class="admin-sidebar">
-      <RouterLink class="admin-sidebar__brand" to="/">
-        <span class="admin-sidebar__eyebrow">Book Area</span>
-        <strong>Quản trị hệ thống</strong>
-      </RouterLink>
-
-      <div class="admin-sidebar__card">
-        <p class="admin-sidebar__label">Điều hướng</p>
-        <strong>Tổng quan dashboard</strong>
-        <span>Theo dõi người dùng, nội dung và nhịp đọc trên toàn hệ thống.</span>
+  <div class="dashboard-content">
+    <header class="admin-header bento-item">
+      <div>
+        <h2>Bảng điều khiển</h2>
+        <p>Theo dõi hoạt động hệ thống và tăng trưởng nội dung.</p>
       </div>
+      <button class="action-btn" @click="loadDashboard" :disabled="loading">
+        <PhArrowsClockwise :size="20" :class="{ 'spin': loading }" />
+        Làm mới
+      </button>
+    </header>
 
-      <div class="admin-sidebar__card">
-        <p class="admin-sidebar__label">Quyền truy cập</p>
-        <strong>{{ authUser?.fullName || 'Quản trị viên' }}</strong>
-        <span>{{ authUser?.email }}</span>
-      </div>
-    </aside>
-
-    <section class="admin-main">
-      <header class="admin-topbar">
-        <div>
-          <p class="admin-topbar__eyebrow">Dashboard</p>
-          <h1>Bảng điều khiển quản trị</h1>
-          <p class="admin-topbar__subtitle">
-            Theo dõi hoạt động đọc sách, người dùng, nội dung và hiệu suất hệ thống
-            Book Area.
-          </p>
-        </div>
-
-        <div class="admin-topbar__actions">
-          <button type="button" class="admin-button admin-button--ghost" @click="loadDashboard">
-            Làm mới
-          </button>
-          <details class="profile-menu">
-            <summary class="profile-menu__trigger">
-              <span class="profile-menu__avatar">
-                {{ (authUser?.fullName || authUser?.email || 'A').slice(0, 1).toUpperCase() }}
-              </span>
-              <span class="profile-menu__meta">
-                <strong>{{ authUser?.fullName || 'Quản trị viên' }}</strong>
-                <small>{{ authUser?.email }}</small>
-              </span>
-            </summary>
-
-            <div class="profile-menu__panel">
-              <p>Tài khoản quản trị đang hoạt động.</p>
-              <button type="button" class="admin-button" @click="handleLogout">Đăng xuất</button>
-            </div>
-          </details>
-        </div>
-      </header>
-
-      <section v-if="loading" class="admin-loading" aria-live="polite">
-        <div v-for="index in 4" :key="index" class="admin-loading__item"></div>
-      </section>
-
-      <section v-else-if="summary" class="admin-content">
-        <section class="summary-grid">
-          <article v-for="card in summaryCards" :key="card.label" class="summary-card">
-            <p>{{ card.label }}</p>
-            <strong>{{ compactNumber.format(card.value) }}</strong>
-          </article>
-        </section>
-
-        <section class="panel panel--wide">
-          <div class="panel__header">
-            <div>
-              <h2>Thống kê theo tháng</h2>
-              <p class="panel__subtitle">
-                Người dùng mới, sách mới, chương mới và lượt đọc trong từng tháng.
-              </p>
-            </div>
-
-            <button type="button" class="admin-button admin-button--ghost" @click="loadMonthlyStatsData">
-              Làm mới
-            </button>
+    <!-- Loading State -->
+    <div v-if="loading" class="bento-grid">
+       <div v-for="i in 6" :key="i" class="bento-card skeleton-card bento-item"></div>
+    </div>
+    
+    <div v-else-if="summary" class="bento-grid">
+      
+      <!-- Hero KPI Card -->
+      <div class="bento-card hero-kpi-card bento-item">
+        <div class="card-surface kpi-surface">
+          <div class="kpi-content">
+            <span class="kpi-label">Tổng doanh thu hệ thống</span>
+            <strong class="kpi-value">{{ currencyNumber.format(summary?.totalRevenue ?? 0) }}</strong>
           </div>
+          <div class="kpi-icon-bg">
+            <PhCurrencyDollar :size="120" weight="duotone" />
+          </div>
+        </div>
+      </div>
 
-          <DashboardBarChart
-            :stats="monthlyStats"
-            :loading="monthlyStatsLoading"
-            :error="monthlyStatsError"
-            @retry="loadMonthlyStatsData"
-          />
-        </section>
-
-        <section class="content-grid">
-          <section class="panel">
-            <div class="panel__header">
-              <div>
-                <h2>Sách nổi bật</h2>
-                <p class="panel__subtitle">
-                  Những đầu sách có lượt đọc và tương tác cao nhất.
-                </p>
-              </div>
+      <!-- Charts Container (2 columns side by side) -->
+      <div class="charts-grid">
+        <!-- Growth Chart Card -->
+        <div class="bento-card chart-card bento-item">
+          <div class="card-title-outside" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h3>Tăng trưởng hệ thống</h3>
+              <p>Người dùng mới, sách mới và bình luận.</p>
             </div>
+            <select v-model="granularity" @change="loadMonthlyStatsData" class="granularity-select">
+              <option value="monthly">6 tháng gần đây</option>
+              <option value="daily">7 ngày gần đây</option>
+            </select>
+          </div>
+          <div class="card-surface">
+            <DashboardBarChart
+              :stats="monthlyStats"
+              :loading="monthlyStatsLoading"
+              :error="monthlyStatsError"
+              type="growth"
+              @retry="loadMonthlyStatsData"
+            />
+          </div>
+        </div>
 
-            <div class="empty-state">
-              <strong>Không có dữ liệu</strong>
-              <p>Danh sách sách nổi bật sẽ xuất hiện khi hệ thống có thống kê phù hợp.</p>
+        <!-- Revenue Chart Card -->
+        <div class="bento-card chart-card bento-item">
+          <div class="card-title-outside" style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h3>Doanh thu</h3>
+              <p>Biến động doanh thu theo thời gian.</p>
             </div>
-          </section>
+          </div>
+          <div class="card-surface">
+            <DashboardBarChart
+              :stats="monthlyStats"
+              :loading="monthlyStatsLoading"
+              :error="monthlyStatsError"
+              type="revenue"
+              @retry="loadMonthlyStatsData"
+            />
+          </div>
+        </div>
+      </div>
 
-          <section class="panel">
-            <div class="panel__header">
-              <div>
-                <h2>Hoạt động gần đây</h2>
-                <p class="panel__subtitle">
-                  Các thao tác và tương tác mới nhất trong hệ thống.
-                </p>
-              </div>
+      <!-- Metric Cards -->
+      <div class="metrics-grid">
+        <div v-for="card in summaryCards" :key="card.label" class="bento-card metric-card bento-item">
+          <div class="card-surface">
+            <div class="metric-icon" :style="{ color: card.color, backgroundColor: `${card.color}15` }">
+              <component :is="card.icon" :size="28" weight="duotone" />
             </div>
-
-            <div class="empty-state">
-              <strong>Không có dữ liệu</strong>
-              <p>Hoạt động mới sẽ được hiển thị tại đây khi có dữ liệu phát sinh.</p>
+            <div class="metric-data">
+              <strong>{{ card.value }}</strong>
+              <span>{{ card.label }}</span>
             </div>
-          </section>
-        </section>
-      </section>
+          </div>
+        </div>
+      </div>
 
-      <section v-else class="panel panel--error">
-        <h2>Không thể tải dữ liệu. Vui lòng thử lại.</h2>
-        <button type="button" class="admin-button" @click="loadDashboard">Thử lại</button>
-      </section>
-    </section>
-  </main>
+    </div>
+    
+    <div v-else class="error-state bento-item">
+      <PhWarningCircle :size="48" color="#ef4444" weight="duotone" />
+      <h3>Lỗi kết nối</h3>
+      <p>{{ errorMessage }}</p>
+      <button class="action-btn" @click="loadDashboard">Thử lại</button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.admin-layout {
-  --dash-bg: oklch(0.953 0.011 73);
-  --dash-surface: oklch(0.985 0.006 74 / 0.96);
-  --dash-line: oklch(0.83 0.015 72);
-  --dash-line-strong: oklch(0.67 0.042 48);
-  --dash-text: oklch(0.25 0.016 44);
-  --dash-soft: oklch(0.5 0.012 48);
-  --dash-accent: oklch(0.67 0.11 58);
-  --dash-accent-deep: oklch(0.53 0.11 44);
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 1.2rem;
-  width: 100%;
-  min-height: 100vh;
-  padding: 1.2rem;
-  background:
-    radial-gradient(circle at top right, rgba(255, 231, 179, 0.2), transparent 22rem),
-    linear-gradient(180deg, rgba(255, 250, 243, 0.95), rgba(245, 236, 224, 0.9)),
-    var(--dash-bg);
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
 }
 
-.admin-sidebar,
-.admin-topbar,
-.panel,
-.summary-card {
-  border: 1px solid color-mix(in oklab, var(--dash-line) 84%, white);
-  background: var(--dash-surface);
-  box-shadow: 0 24px 60px rgba(77, 50, 29, 0.08);
-}
-
-.admin-sidebar {
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  min-width: 0;
-  padding: 1.2rem;
-  border-radius: 1.5rem;
-}
-
-.admin-sidebar__brand,
-.admin-sidebar__card {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.admin-sidebar__brand {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(117, 83, 57, 0.12);
-}
-
-.admin-sidebar__eyebrow,
-.admin-topbar__eyebrow,
-.admin-sidebar__label {
-  font-size: 0.76rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--dash-soft);
-}
-
-.admin-sidebar__brand strong,
-.admin-topbar h1,
-.panel h2,
-.summary-card strong {
-  color: var(--dash-text);
-}
-
-.admin-sidebar__card {
-  padding: 1rem;
-  border: 1px solid rgba(117, 83, 57, 0.1);
-  border-radius: 1.1rem;
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.admin-sidebar__card strong {
-  color: var(--dash-text);
-}
-
-.admin-sidebar__card span {
-  color: var(--dash-soft);
-}
-
-.admin-main {
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  min-width: 0;
-  width: 100%;
-}
-
-.admin-topbar {
+.admin-header {
   display: flex;
   justify-content: space-between;
-  align-items: start;
-  gap: 1.2rem;
-  min-width: 0;
-  padding: 1.4rem 1.5rem;
-  border-radius: 1.5rem;
+  align-items: center;
+  padding: 0 1rem;
 }
 
-.admin-topbar > div:first-child {
-  min-width: 0;
-  flex: 1 1 auto;
+.admin-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin: 0 0 0.25rem 0;
 }
 
-.admin-topbar h1 {
-  max-width: none;
-  font-size: clamp(2rem, 3vw, 2.75rem);
-  line-height: 1.05;
-  white-space: normal;
-  text-wrap: balance;
+.admin-header p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 1.05rem;
 }
 
-.admin-topbar__subtitle,
-.panel__subtitle,
-.empty-state p {
-  margin-top: 0.45rem;
-  color: var(--dash-soft);
-}
-
-.admin-topbar__actions {
+.action-btn {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex: 0 0 auto;
-}
-
-.admin-button {
-  min-height: 2.9rem;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-deep));
-  color: white;
+  gap: 0.5rem;
+  background: var(--bento-surface);
+  border: 1px solid var(--bento-border);
+  box-shadow: var(--bento-shadow);
+  padding: 0.75rem 1.25rem;
+  border-radius: 99px;
   font-weight: 600;
-  transition:
-    transform 180ms ease-out,
-    box-shadow 180ms ease-out,
-    filter 180ms ease-out;
-}
-
-.admin-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 28px rgba(140, 88, 39, 0.2);
-  filter: saturate(1.03);
-}
-
-.admin-button--ghost {
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--dash-text);
-  border: 1px solid rgba(117, 83, 57, 0.12);
-  box-shadow: none;
-}
-
-.profile-menu {
-  position: relative;
-  min-width: 0;
-}
-
-.profile-menu[open] .profile-menu__trigger {
-  border-color: color-mix(in oklab, var(--dash-line-strong) 72%, white);
-  box-shadow: 0 18px 34px rgba(77, 50, 29, 0.1);
-}
-
-.profile-menu__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.8rem;
-  min-width: 15rem;
-  max-width: 20rem;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid rgba(117, 83, 57, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  color: var(--text-main);
   cursor: pointer;
-  list-style: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.profile-menu__trigger::-webkit-details-marker {
-  display: none;
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 40px -10px rgba(0,0,0,0.08);
 }
 
-.profile-menu__avatar {
+.action-btn:active {
+  transform: scale(0.96);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Bento Grid */
+.bento-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.card-title-outside {
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.card-title-outside h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.card-title-outside p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.granularity-select {
+  padding: 0.5rem 1rem;
+  border-radius: 99px;
+  border: 1px solid var(--bento-border);
+  background: var(--bento-surface);
+  color: var(--text-main);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  transition: all 0.2s;
+}
+
+.granularity-select:hover {
+  border-color: #d4d4d8;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+}
+
+.card-surface {
+  background: var(--bento-surface);
+  border-radius: 2.5rem;
+  border: 1px solid var(--bento-border);
+  box-shadow: var(--bento-shadow);
+  padding: 2rem;
+  height: 100%;
+}
+
+.kpi-surface {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 3rem 4rem;
+  background: linear-gradient(135deg, #18181b, #27272a);
+  color: white;
+  border: none;
+}
+
+.kpi-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-label {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #a1a1aa; /* Zinc 400 */
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-value {
+  font-size: clamp(3rem, 5vw, 5.5rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: white;
+  text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.kpi-icon-bg {
+  position: absolute;
+  right: -10%;
+  bottom: -20%;
+  color: rgba(255, 255, 255, 0.05);
+  transform: rotate(-15deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.chart-card {
+  width: 100%;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.metric-card .card-surface {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.75rem;
+  border-radius: 2rem;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metric-card:hover .card-surface {
+  transform: translateY(-4px);
+  box-shadow: 0 30px 50px -15px rgba(0,0,0,0.08);
+}
+
+.metric-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 1.25rem;
   display: grid;
   place-items: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-deep));
-  color: white;
-  font-weight: 700;
-  flex: 0 0 auto;
 }
 
-.profile-menu__meta {
-  display: grid;
-  min-width: 0;
-}
-
-.profile-menu__meta strong,
-.profile-menu__meta small {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-menu__meta small {
-  color: var(--dash-soft);
-}
-
-.profile-menu__panel {
-  position: absolute;
-  top: calc(100% + 0.65rem);
-  right: 0;
-  z-index: 4;
-  display: grid;
-  gap: 0.9rem;
-  min-width: 16rem;
-  padding: 1rem;
-  border: 1px solid rgba(117, 83, 57, 0.12);
-  border-radius: 1rem;
-  background: rgba(255, 252, 248, 0.98);
-  box-shadow: 0 24px 44px rgba(77, 50, 29, 0.14);
-}
-
-.profile-menu__panel p {
-  color: var(--dash-soft);
-}
-
-.admin-loading,
-.summary-grid,
-.content-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.admin-loading,
-.summary-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.admin-loading__item {
-  min-height: 9rem;
-  border-radius: 1.35rem;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.54), rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.54)),
-    rgba(255, 244, 229, 0.8);
-  background-size: 220% 100%;
-  animation: dashboard-skeleton 1.2s linear infinite;
-}
-
-.admin-content {
-  display: grid;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.summary-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.summary-card {
-  display: grid;
-  gap: 0.55rem;
-  min-width: 0;
-  padding: 1.15rem;
-  border-radius: 1.35rem;
-}
-
-.summary-card p {
-  color: var(--dash-soft);
-  font-size: 0.9rem;
-}
-
-.summary-card strong {
-  font-size: 1.9rem;
-  line-height: 1;
-}
-
-.panel {
-  display: grid;
-  gap: 1rem;
-  min-width: 0;
-  padding: 1.25rem;
-  border-radius: 1.6rem;
-}
-
-.panel--wide {
-  min-width: 0;
-}
-
-.panel__header {
+.metric-data {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
+  flex-direction: column;
+}
+
+.metric-data strong {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.metric-data span {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+/* Skeleton Loading */
+.skeleton-card {
+  height: 160px;
+  background: var(--bento-surface);
+  border-radius: 2.5rem;
+  border: 1px solid var(--bento-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 1rem;
-  min-width: 0;
-}
-
-.panel__header > div {
-  min-width: 0;
-}
-
-.content-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.empty-state {
-  display: grid;
-  gap: 0.45rem;
-  min-height: 12rem;
-  place-content: center;
-  padding: 1.25rem;
-  border: 1px dashed rgba(117, 83, 57, 0.18);
-  border-radius: 1.2rem;
-  background: rgba(255, 252, 248, 0.86);
+  background: var(--bento-surface);
+  border-radius: 2.5rem;
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  padding: 4rem;
   text-align: center;
 }
 
-.empty-state strong {
-  color: var(--dash-text);
+.error-state h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
 }
 
-.panel--error {
-  justify-items: start;
-}
-
-@keyframes dashboard-skeleton {
-  from {
-    background-position: 0 0;
-  }
-
-  to {
-    background-position: 220% 0;
-  }
-}
-
-@media (max-width: 1180px) {
-  .admin-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-sidebar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: start;
-  }
-
-  .admin-sidebar__brand {
-    padding-bottom: 0;
-    border-bottom: 0;
-  }
-}
-
-@media (max-width: 980px) {
-  .admin-loading,
-  .content-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .admin-topbar__actions {
-    justify-content: space-between;
-  }
-}
-
-@media (max-width: 760px) {
-  .admin-layout {
-    padding: 1rem;
-  }
-
-  .admin-sidebar,
-  .admin-topbar,
-  .panel,
-  .summary-card {
-    border-radius: 1.25rem;
-  }
-
-  .admin-sidebar,
-  .admin-loading,
-  .content-grid,
-  .admin-topbar__actions {
-    grid-template-columns: 1fr;
-    display: grid;
-  }
-
-  .panel__header {
-    flex-direction: column;
-  }
-
-  .profile-menu,
-  .profile-menu__trigger {
-    width: 100%;
-    max-width: none;
-  }
-
-  .profile-menu__panel {
-    left: 0;
-    right: auto;
-    min-width: 100%;
-  }
+.error-state p {
+  color: var(--text-muted);
+  margin: 0;
 }
 </style>

@@ -1,6 +1,12 @@
 package com.thientri.book_area.controller.auth;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,7 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.thientri.book_area.dto.request.user.LoginRequest;
 import com.thientri.book_area.dto.request.user.RegisterRequest;
+import com.thientri.book_area.dto.request.user.UpdateProfileRequest;
 import com.thientri.book_area.dto.response.user.AuthResponse;
+import com.thientri.book_area.model.user.Role;
+import com.thientri.book_area.model.user.User;
 import com.thientri.book_area.service.auth.IAuthService;
 
 import jakarta.validation.Valid;
@@ -31,5 +40,27 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, Object>> getCurrentUser(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(profileResponse(user));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<Map<String, Object>> updateProfile(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(profileResponse(authService.updateProfile(user, request)));
+    }
+
+    private Map<String, Object> profileResponse(User user) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", user.getId());
+        response.put("email", user.getEmail());
+        response.put("fullName", user.getFullName());
+        response.put("phone", user.getPhone());
+        response.put("roles", user.getRoles().stream().map(Role::getName).toList());
+        return response;
     }
 }

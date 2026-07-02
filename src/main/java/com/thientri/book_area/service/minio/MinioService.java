@@ -109,4 +109,55 @@ public class MinioService {
             throw new RuntimeException("Không thể xóa file");
         }
     }
+
+    /**
+     * Upload InputStream lên MinIO có hỗ trợ luồng kích thước chưa rõ
+     */
+    public String uploadInputStream(InputStream inputStream, String objectName, String contentType, long size) {
+        if (inputStream == null) {
+            throw new IllegalArgumentException("InputStream không được để trống");
+        }
+        if (contentType == null || contentType.isBlank()) {
+            throw new IllegalArgumentException("Content-Type không được để trống");
+        }
+
+        // Validate MIME type
+        String ext;
+        String cleanContentType = contentType.trim().toLowerCase();
+        if (cleanContentType.equals("image/jpeg") || cleanContentType.equals("image/jpg")) {
+            ext = ".jpg";
+            cleanContentType = "image/jpeg";
+        } else if (cleanContentType.equals("image/png")) {
+            ext = ".png";
+        } else if (cleanContentType.equals("image/webp")) {
+            ext = ".webp";
+        } else {
+            throw new IllegalArgumentException("Định dạng ảnh không được hỗ trợ: " + contentType);
+        }
+
+        // Generate object name if needed
+        String finalObjectName = objectName;
+        if (finalObjectName == null || finalObjectName.isBlank() || finalObjectName.endsWith("/")) {
+            String folder = (finalObjectName != null && !finalObjectName.isBlank()) ? finalObjectName : "covers/google-books/";
+            finalObjectName = folder + UUID.randomUUID().toString() + ext;
+        }
+
+        try {
+            long putSize = size >= 0 ? size : -1;
+            long partSize = size >= 0 ? -1 : 5L * 1024 * 1024; // 5MB part size for unknown size
+
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(finalObjectName)
+                    .stream(inputStream, putSize, partSize)
+                    .contentType(cleanContentType)
+                    .build());
+
+            log.info("Upload InputStream thành công: {}", finalObjectName);
+            return finalObjectName;
+        } catch (Exception e) {
+            log.error("Lỗi khi upload InputStream lên MinIO: ", e);
+            throw new RuntimeException("Không thể upload file từ stream: " + e.getMessage());
+        }
+    }
 }

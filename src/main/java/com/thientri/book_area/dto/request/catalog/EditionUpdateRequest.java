@@ -11,4 +11,5 @@ public class EditionUpdateRequest {
     private Integer stock;
     private Integer duration;
     private List<Long> narratorIds;
+
 }

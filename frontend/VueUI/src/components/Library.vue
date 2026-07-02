@@ -1,8 +1,8 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import UserDropdown from './UserDropdown.vue'
-import { getBooks } from '../services/api'
+import TopNavbar from './layout/TopNavbar.vue'
+import { getBooks, getFileUrl } from '../services/api'
 import { authUser } from '../stores/auth'
 
 const router = useRouter()
@@ -13,39 +13,69 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const hasLoadedBooks = ref(false)
 
-const navItems = [
-  { label: 'Home', to: '/' },
-  { label: 'Catalog', sectionId: 'catalog' },
-]
 
-const isSignedIn = computed(() => Boolean(authUser.value))
 
-const filters = ['All', 'With PDF', 'No PDF', 'In stock']
+// Quick filters: All, Sách giấy (PHYSICAL), Sách điện tử (EBOOK), Sách nói (AUDIOBOOK)
+const filters = ['All', 'Sách giấy', 'Sách điện tử', 'Sách nói']
 
 const bookCount = computed(() => books.value.length)
 
+// Resolve nested data from editions
 const displayBooks = computed(() =>
-  books.value.map((book) => ({
-    ...book,
-    initials: getInitials(book.title),
-    description: book.description || 'No description yet.',
-    publisherName: book.publisherName || 'Unknown publisher',
-  })),
+  books.value.map((book) => {
+    const initials = getInitials(book.title)
+    
+    // Resolve cover image: first available edition cover or main imageUrl
+    let cover = ''
+    if (book.editions && book.editions.length > 0) {
+      const coverEd = book.editions.find(e => e.coverObjectName)
+      if (coverEd) cover = coverEd.coverUrl || getFileUrl(coverEd.coverObjectName)
+    }
+    if (!cover && book.imageUrls && book.imageUrls.length > 0) {
+      cover = getFileUrl(book.imageUrls[0])
+    }
+
+    // Resolve format lists
+    const formats = book.editions ? book.editions.map(e => e.format) : []
+    
+    // Resolve price range or minimum price
+    let prices = book.editions ? book.editions.map(e => Number(e.salePrice)).filter(p => !isNaN(p)) : []
+    let minPrice = prices.length > 0 ? Math.min(...prices) : null
+    let maxPrice = prices.length > 0 ? Math.max(...prices) : null
+
+    // Check stock
+    const isOutOfStock = book.editions ? book.editions.every(e => e.format === 'PHYSICAL' && (!e.stock || e.stock <= 0)) : false
+
+    return {
+      ...book,
+      initials,
+      coverUrl: cover,
+      formats,
+      minPrice,
+      maxPrice,
+      isOutOfStock,
+      description: book.description || 'Chưa có mô tả tóm tắt cho tác phẩm này.',
+      publisherName: book.publisherName || 'One Online'
+    }
+  }),
 )
 
 const filteredBooks = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
   return displayBooks.value.filter((book) => {
+    // Filter formats
     const matchesFilter =
       activeFilter.value === 'All' ||
-      (activeFilter.value === 'With PDF' && Boolean(book.pdfUrl)) ||
-      (activeFilter.value === 'No PDF' && !book.pdfUrl) ||
-      (activeFilter.value === 'In stock' && Number(book.stock) > 0)
+      (activeFilter.value === 'Sách giấy' && book.formats.includes('PHYSICAL')) ||
+      (activeFilter.value === 'Sách điện tử' && (book.formats.includes('EBOOK_PDF') || book.formats.includes('EBOOK_EPUB'))) ||
+      (activeFilter.value === 'Sách nói' && book.formats.includes('AUDIOBOOK'))
 
+    // Search query matches title, description, authors, or publisher
+    const authorString = book.authorNames ? book.authorNames.join(' ') : ''
     const matchesQuery =
       !query ||
-      [book.title, book.description, book.publisherName]
+      [book.title, book.description, book.publisherName, authorString]
         .join(' ')
         .toLowerCase()
         .includes(query)
@@ -63,7 +93,7 @@ async function loadBooks() {
     const payload = await getBooks()
     books.value = Array.isArray(payload) ? payload : []
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Could not load books.'
+    errorMessage.value = error instanceof Error ? error.message : 'Không thể tải danh sách sách.'
   } finally {
     isLoading.value = false
     await nextTick()
@@ -72,63 +102,39 @@ async function loadBooks() {
 }
 
 function getInitials(title) {
-  if (!title) {
-    return 'BA'
-  }
+  if (!title) return 'BA'
+  return title.trim().split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join('').toUpperCase()
+}
 
-  return title
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word.charAt(0))
-    .join('')
-    .toUpperCase()
+function formatPriceRange(book) {
+  if (book.minPrice == null) return 'Đang cập nhật'
+  if (book.minPrice === book.maxPrice) {
+    return formatPrice(book.minPrice)
+  }
+  return `${formatPrice(book.minPrice)} - ${formatPrice(book.maxPrice)}`
 }
 
 function formatPrice(price) {
-  if (price == null) {
-    return 'Updating'
-  }
-
+  if (price == null) return ''
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(Number(price))
 }
 
-function stockLabel(stock) {
-  if (stock == null) {
-    return 'Updating'
-  }
-
-  if (Number(stock) <= 0) {
-    return 'Out of stock'
-  }
-
-  return `${stock} in stock`
-}
-
-function openBook(book) {
-  if (book.pdfUrl) {
-    window.open(book.pdfUrl, '_blank', 'noopener,noreferrer')
+function formatFormatLabel(format) {
+  switch (format) {
+    case 'PHYSICAL': return '📖 Sách giấy'
+    case 'EBOOK_PDF': return '📱 PDF E-book'
+    case 'EBOOK_EPUB': return '📱 EPUB E-book'
+    case 'AUDIOBOOK': return '🎧 Sách nói'
+    default: return format
   }
 }
 
-function scrollToSection(sectionId) {
-  document.getElementById(sectionId)?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start',
-  })
-}
-
-function handleNavClick(item) {
-  if (item.to) {
-    router.push(item.to)
-    return
-  }
-
-  scrollToSection(item.sectionId)
+function openBookDetail(slug) {
+  router.push(`/book/${slug}`)
 }
 
 watch([searchQuery, activeFilter], async () => {
@@ -144,105 +150,52 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div id="library-top" class="library-page">
-    <header class="topbar">
-      <div class="topbar-side topbar-side-left">
-        <RouterLink class="brand" to="/" aria-label="BOOK AREA home">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 96 96" role="presentation">
-              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M24 73V36c0-13.25 10.75-24 24-24s24 10.75 24 24v37" stroke-width="1.8" />
-                <path d="M24 73c9.4-2.4 16.45-2.73 24 3.75" stroke-width="1.8" />
-                <path d="M72 73c-9.4-2.4-16.45-2.73-24 3.75" stroke-width="1.8" />
-                <path d="M18 84l6-11h48l6 11c-10.4-2.1-19.15-2.3-30 4-10.85-6.3-19.6-6.1-30-4Z" stroke-width="1.8" />
-                <path d="M48 76v11" stroke-width="1.6" />
-                <path d="M27 79c9.2-1.65 14.6-1.05 21 3" stroke-width="1.5" />
-                <path d="M69 79c-9.2-1.65-14.6-1.05-21 3" stroke-width="1.5" />
-                <path d="M36 44v22" stroke-width="1.5" />
-                <path d="M40 47v18" stroke-width="1.5" />
-                <path d="M44 50v15" stroke-width="1.5" />
-                <path d="M60 44v22" stroke-width="1.5" />
-                <path d="M56 47v18" stroke-width="1.5" />
-                <path d="M52 50v15" stroke-width="1.5" />
-                <path d="M34 40l10 8" stroke-width="1.3" />
-                <path d="M62 40l-10 8" stroke-width="1.3" />
-              </g>
-              <circle cx="48" cy="42" r="7" fill="currentColor" opacity="0.92" />
-              <path d="M48 49.5l7 10.5H41z" fill="currentColor" opacity="0.22" />
-              <g fill="currentColor">
-                <path d="M48 25l1.6 2.8 2.8 1.6-2.8 1.6-1.6 2.8-1.6-2.8-2.8-1.6 2.8-1.6z" />
-                <path d="M59 31l1 1.7 1.7 1-1.7 1-1 1.7-1-1.7-1.7-1 1.7-1z" />
-                <path d="M37 33l1 1.7 1.7 1-1.7 1-1 1.7-1-1.7-1.7-1 1.7-1z" />
-              </g>
-            </svg>
-          </span>
-          <span class="brand-wordmark">BOOK AREA</span>
-        </RouterLink>
-      </div>
+  <div id="library-top" class="library-shell">
+    <TopNavbar />
 
-      <nav class="topbar-nav" aria-label="Primary">
-        <button
-          v-for="item in navItems"
-          :key="item.label"
-          type="button"
-          @click="handleNavClick(item)"
-        >
-          {{ item.label }}
-        </button>
-      </nav>
-
-      <div class="topbar-side topbar-side-right">
-        <template v-if="!isSignedIn">
-          <RouterLink class="topbar-utility" to="/login">Login</RouterLink>
-        </template>
-
-        <template v-else>
-          <UserDropdown />
-        </template>
-      </div>
-    </header>
-
-    <main class="library-main">
+    <main class="library-main-area">
+      <!-- Minimalist Hero Search Section -->
       <section class="library-hero" aria-labelledby="library-title">
         <div class="library-hero-copy">
-          <p class="library-kicker">Library</p>
+          <p class="library-kicker">ONE ONLINE STORE</p>
           <h1 id="library-title">Khám phá kho sách trực tuyến</h1>
-          <p>
-            tìm kiếm nhanh và đọc ngay những cuốn sách bạn yêu thích.
+          <p class="library-subtext">
+            Tìm kiếm nhanh chóng, chọn định dạng yêu thích và bắt đầu trải nghiệm đọc.
           </p>
 
           <form class="library-search" role="search" @submit.prevent>
-            <label for="library-search-input">Search the library</label>
             <div class="search-field">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
                 <path
                   d="m20 20-4.6-4.6m2.6-5.4a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"
                   fill="none"
                   stroke="currentColor"
                   stroke-linecap="round"
-                  stroke-width="1.7"
+                  stroke-width="2"
                 />
               </svg>
               <input
                 id="library-search-input"
                 v-model="searchQuery"
                 type="search"
-                placeholder="Search title, description, publisher"
+                placeholder="Tìm tựa sách, tác giả, nhà xuất bản..."
+                aria-label="Tìm kiếm trong thư viện"
               />
             </div>
           </form>
         </div>
       </section>
 
+      <!-- Catalog grid with Filters -->
       <section id="catalog" class="catalog-section" aria-labelledby="catalog-title">
-        <div class="section-intro catalog-intro">
-          <div>
-            <p class="library-kicker">Catalog</p>
-            <h2 id="catalog-title">Sách còn ở trong thư viện</h2>
-            <p class="catalog-count">{{ bookCount }} books</p>
+        <div class="catalog-controls">
+          <div class="catalog-intro-title">
+            <h2 id="catalog-title">Tất cả tác phẩm</h2>
+            <p class="catalog-count">{{ filteredBooks.length }} tác phẩm được tìm thấy</p>
           </div>
 
-          <div class="mood-filter" aria-label="Filter books">
+          <!-- Category/Format Filters -->
+          <div class="mood-filter" aria-label="Lọc sách theo định dạng">
             <button
               v-for="filter in filters"
               :key="filter"
@@ -255,56 +208,63 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="book-list" :class="{ 'book-list--ready': hasLoadedBooks }" aria-live="polite">
-          <div v-if="isLoading" class="empty-state">Loading books from the library...</div>
+        <!-- Books Grid -->
+        <div class="book-list-container">
+          <div v-if="isLoading" class="empty-state">
+            <div class="spinner"></div>
+            <p>Đang tải dữ liệu từ kệ sách...</p>
+          </div>
 
           <div v-else-if="errorMessage" class="empty-state empty-state-action">
-            <span>Could not load the library: {{ errorMessage }}</span>
-            <button type="button" @click="loadBooks">Try again</button>
+            <span>Không thể tải kệ sách: {{ errorMessage }}</span>
+            <button type="button" class="btn btn-secondary" @click="loadBooks">Tải lại</button>
           </div>
 
           <div v-else-if="books.length === 0" class="empty-state">
-            The library is empty. Add books in SQL Server to show them here.
+            Hiện tại cửa hàng chưa có tác phẩm trực tuyến. Vui lòng quay lại sau.
           </div>
 
           <div v-else-if="filteredBooks.length === 0" class="empty-state">
-            No book matches that search yet. Try another title, description, or publisher.
+            Không tìm thấy cuốn sách nào khớp với tìm kiếm của bạn.
           </div>
 
-          <template v-else>
+          <div v-else class="editorial-books-grid">
             <article
-              v-for="(book, index) in filteredBooks"
+              v-for="book in filteredBooks"
               :key="book.id ?? book.title"
-              class="library-book"
-              :class="{ 'library-book--animated': hasLoadedBooks && index < 6 }"
-              :style="{ '--book-index': Math.min(index, 5) }"
+              class="book-card"
+              @click="openBookDetail(book.slug)"
             >
-              <div class="library-cover">
-                <img v-if="book.coverUrl" :src="book.coverUrl" :alt="`Cover of ${book.title}`" loading="lazy" />
+              <!-- Book Cover Thumbnail -->
+              <div class="book-card-cover">
+                <img v-if="book.coverUrl" :src="book.coverUrl" :alt="`Bìa sách ${book.title}`" loading="lazy" />
                 <strong v-else class="cover-placeholder">{{ book.initials }}</strong>
-              </div>
-
-              <div class="library-book-copy">
-                <div>
-                  <p class="book-author">{{ book.publisherName }}</p>
-                  <h3>{{ book.title }}</h3>
-                  <p class="book-meta">{{ formatPrice(book.price) }} / {{ stockLabel(book.stock) }}</p>
+                
+                <!-- Format badges overlay -->
+                <div class="format-badges" v-if="book.formats && book.formats.length > 0">
+                  <span v-for="f in book.formats" :key="f" :class="['mini-badge', f.toLowerCase()]" :title="formatFormatLabel(f)">
+                    {{ f === 'PHYSICAL' ? 'PHYS' : f === 'AUDIOBOOK' ? 'AUDIO' : 'E-BOOK' }}
+                  </span>
                 </div>
-                <p>{{ book.description }}</p>
               </div>
 
-              <div class="library-book-action">
-                <button
-                  type="button"
-                  class="read-button"
-                  :disabled="!book.pdfUrl"
-                  @click="openBook(book)"
-                >
-                  {{ book.pdfUrl ? 'Đọc sách' : 'Chưa có PDF' }}
-                </button>
+              <!-- Book Copy Metadata -->
+              <div class="book-card-meta">
+                <p class="book-authors-line" v-if="book.authorNames && book.authorNames.length > 0">
+                  {{ book.authorNames.join(', ') }}
+                </p>
+                <h3 class="book-card-title">{{ book.title }}</h3>
+                <p class="book-publisher">{{ book.publisherName }}</p>
+                
+                <div class="book-card-footer">
+                  <span class="book-price">{{ formatPriceRange(book) }}</span>
+                  <span class="book-stock-tag" :class="{ 'out-of-stock': book.isOutOfStock }">
+                    {{ book.isOutOfStock ? 'Hết hàng' : 'Có sẵn' }}
+                  </span>
+                </div>
               </div>
             </article>
-          </template>
+          </div>
         </div>
       </section>
     </main>
@@ -312,411 +272,392 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.library-page {
-  position: relative;
+.library-shell {
   min-height: 100vh;
-  padding: 6.8rem clamp(1rem, 3vw, 2rem) 5rem;
-  color: var(--text);
+  background-color: var(--page-bg);
+  display: flex;
+  flex-direction: column;
 }
 
-.library-main {
-  display: grid;
+
+
+.topbar-nav {
+  display: flex;
+  gap: 2rem;
 }
 
-.library-hero,
-.catalog-section {
-  width: min(100%, var(--content-width));
-  margin: 0 auto;
-}
-
-.library-hero {
-  display: grid;
-  gap: 1.2rem;
-  padding: clamp(2.5rem, 6vw, 5rem) 0 0;
-  animation: library-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.library-hero-copy {
-  display: grid;
-  justify-items: start;
-  gap: 1.1rem;
-  max-width: 42rem;
-  will-change: transform, opacity;
-}
-
-.library-kicker,
-.book-author,
-.catalog-count {
-  font-size: 0.78rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+.nav-link {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
   color: var(--text-soft);
+  font-weight: 500;
+  padding: 0.25rem 0;
+  transition: color 200ms ease;
 }
 
-.library-hero h1,
-.section-intro h2 {
+.nav-link:hover, .nav-link.active {
   color: var(--text-strong);
-  font-family: 'Prata', Georgia, serif;
-  font-weight: 400;
+}
+
+.topbar-utility {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 1.2rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.topbar-utility:hover {
+  background-color: var(--surface-soft);
+  border-color: var(--accent);
+}
+
+/* Main Area Container */
+.library-main-area {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2.5rem 2rem 5rem;
+}
+
+/* Search Hero Section */
+.library-hero {
+  text-align: center;
+  max-width: 650px;
+  margin: 0 auto 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.library-kicker {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 0.75rem;
 }
 
 .library-hero h1 {
-  max-width: min(100%, 12ch);
-  font-size: clamp(2.9rem, 6vw, 6rem);
-  line-height: 0.96;
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.15;
+  color: var(--text-strong);
+  margin-bottom: 1rem;
+  font-weight: 500;
 }
 
-.library-hero-copy > p:not(.library-kicker) {
-  max-width: 38rem;
-  font-size: clamp(1.02rem, 1.35vw, 1.22rem);
-  color: var(--text);
+.library-subtext {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  color: var(--text-soft);
+  margin-bottom: 2rem;
 }
 
 .library-search {
-  display: grid;
-  gap: 0.65rem;
-  width: min(100%, 36rem);
-  margin-top: 0.75rem;
-}
-
-.library-search label {
-  color: var(--text-soft);
-  font-size: 0.86rem;
+  width: 100%;
 }
 
 .search-field {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.8rem;
-  align-items: center;
-  min-height: 3.55rem;
-  padding: 0 1rem;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 84%, white);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 86%, transparent);
-  box-shadow: 0 18px 50px color-mix(in oklab, var(--accent-deep) 10%, transparent);
-  transition:
-    border-color 180ms ease-out,
-    background-color 180ms ease-out,
-    box-shadow 180ms ease-out,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
-}
-
-.search-field:focus-within {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent-deep) 46%, white);
-  background: color-mix(in oklab, var(--surface) 94%, white);
-  box-shadow: 0 6px 12px color-mix(in oklab, var(--accent-deep) 10%, transparent);
+  position: relative;
+  width: 100%;
 }
 
 .search-field svg {
-  width: 1.15rem;
-  color: var(--accent-deep);
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-soft);
+  pointer-events: none;
 }
 
 .search-field input {
   width: 100%;
-  min-width: 0;
-  background: transparent;
+  height: 52px;
+  padding: 0 1.5rem 0 3.2rem;
+  background-color: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.98rem;
   color: var(--text-strong);
-  outline: 0;
+  box-shadow: var(--shadow-soft);
+  transition: all 200ms ease;
 }
 
-.search-field input::placeholder {
-  color: color-mix(in oklab, var(--text-soft) 72%, white);
+.search-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(47, 79, 62, 0.06);
 }
 
+/* Catalog header and filter styling */
 .catalog-section {
-  display: grid;
-  gap: clamp(1.4rem, 3vw, 2.2rem);
-  padding: clamp(3rem, 7vw, 5rem) 0 0;
-  animation: library-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 2.5rem;
 }
 
-.section-intro {
-  display: grid;
-  gap: 0.7rem;
-  max-width: 42rem;
+.catalog-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
 }
 
-.section-intro h2 {
-  font-size: clamp(2rem, 4vw, 4rem);
-  line-height: 1.03;
+.catalog-intro-title h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--text-strong);
+  font-weight: 500;
+  margin-bottom: 0.3rem;
 }
 
-.catalog-intro {
-  max-width: none;
-  grid-template-columns: minmax(0, 0.7fr) minmax(320px, 1fr);
-  align-items: end;
+.catalog-count {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-soft);
 }
 
 .mood-filter {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.55rem;
+  gap: 0.5rem;
+  background-color: var(--surface-soft);
+  padding: 0.3rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
 }
 
 .mood-filter button {
-  position: relative;
-  min-height: 2.5rem;
-  padding: 0.58rem 0.88rem;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 82%, white);
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--surface) 72%, transparent);
-  color: var(--text);
-  font-size: 0.86rem;
-  transition:
-    color 180ms ease-out,
-    border-color 180ms ease-out,
-    background-color 180ms ease-out,
-    transform 180ms ease-out;
+  padding: 0.45rem 1.2rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  border-radius: var(--radius-sm);
+  transition: all 200ms ease;
 }
 
-.mood-filter button:hover,
 .mood-filter button.active {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent-deep) 42%, white);
-  background: color-mix(in oklab, var(--accent-glow) 54%, white);
-  color: var(--text-strong);
+  background-color: var(--accent);
+  color: var(--surface);
+  box-shadow: none;
 }
 
-.mood-filter button:active {
-  transform: translateY(0) scale(0.98);
+/* Spinner and loading */
+.book-list-container {
+  min-height: 300px;
 }
 
-.book-list {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.library-book {
-  display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr) minmax(7rem, auto);
-  gap: clamp(1rem, 2vw, 1.6rem);
+.empty-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  min-height: 12rem;
-  padding: 0.8rem clamp(0.8rem, 1.8vw, 1.2rem);
-  border: 1px solid color-mix(in oklab, var(--line-soft) 78%, white);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 88%, transparent);
-  box-shadow: 0 12px 36px color-mix(in oklab, var(--accent-deep) 7%, transparent);
-  transition:
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 220ms ease-out,
-    box-shadow 220ms ease-out;
+  justify-content: center;
+  min-height: 250px;
+  font-family: var(--font-body);
+  color: var(--text-soft);
+  text-align: center;
 }
 
-.library-book--animated {
-  animation: library-book-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--book-index, 0) * 40ms);
-  will-change: transform, opacity;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(43, 33, 24, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--accent);
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 1rem;
 }
 
-.library-book:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in oklab, var(--line-strong) 72%, white);
-  box-shadow: 0 22px 56px color-mix(in oklab, var(--accent-deep) 12%, transparent);
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.library-cover {
-  position: relative;
-  min-height: 10.3rem;
+.empty-state-action button {
+  margin-top: 1rem;
+}
+
+/* Editorial E-commerce Books Grid */
+.editorial-books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2.5rem;
+}
+
+.book-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  padding: 0.95rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-strong);
+}
+
+.book-card-cover {
+  width: 100%;
+  aspect-ratio: 2/3;
+  border-radius: 4px;
+  background-color: var(--surface-soft);
   overflow: hidden;
-  border-radius: 6px;
-  background: linear-gradient(160deg, oklch(0.88 0.07 83), oklch(0.58 0.12 52) 48%, oklch(0.25 0.04 42));
-  box-shadow: inset 0 0 0 1px rgba(255, 245, 225, 0.22);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(43, 33, 24, 0.06);
 }
 
-.library-cover::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    linear-gradient(90deg, rgba(34, 22, 15, 0.18), transparent 18%),
-    repeating-linear-gradient(0deg, rgba(255, 248, 229, 0.08) 0 1px, transparent 1px 13px);
-}
-
-.library-cover img {
-  position: absolute;
-  inset: 0;
+.book-card-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
 .cover-placeholder {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  opacity: 0.4;
+}
+
+.format-badges {
   position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  color: rgba(255, 246, 225, 0.92);
-  font-family: 'Prata', Georgia, serif;
-  font-size: clamp(1.9rem, 4vw, 3.2rem);
-  font-weight: 400;
-}
-
-.library-book-copy {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.library-book-copy h3 {
-  color: var(--text-strong);
-  font-size: clamp(1.3rem, 2vw, 1.95rem);
-  line-height: 1.08;
-}
-
-.book-meta {
-  margin-top: 0.2rem;
-  color: var(--text-soft);
-}
-
-.library-book-copy > p {
-  max-width: 58ch;
-}
-
-.library-book-action {
-  display: grid;
-  justify-items: end;
-  gap: 0.7rem;
-}
-
-.library-book-action .read-button {
-  display: grid;
-  min-width: 7.8rem;
-  min-height: 2.8rem;
-  padding: 0 1rem;
-  place-items: center;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 82%, white);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 86%, white);
-  color: var(--text-strong);
-  font-weight: 700;
-  transition:
-    transform 180ms ease-out,
-    border-color 180ms ease-out,
-    background-color 180ms ease-out;
-}
-
-.library-book-action .read-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--accent-deep) 44%, white);
-  background: color-mix(in oklab, var(--accent-glow) 62%, white);
-}
-
-.library-book-action .read-button:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
-}
-
-.library-book-action .read-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
-}
-
-.empty-state {
-  padding: 1.4rem;
-  border: 1px solid color-mix(in oklab, var(--line-soft) 82%, white);
-  border-radius: 8px;
-  color: var(--text-soft);
-  background: color-mix(in oklab, var(--surface) 82%, transparent);
-}
-
-.empty-state-action {
+  bottom: 0.5rem;
+  right: 0.5rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  align-items: center;
-  justify-content: space-between;
+  gap: 0.25rem;
 }
 
-.empty-state-action button {
-  min-height: 2.4rem;
-  padding: 0 0.9rem;
-  border: 1px solid color-mix(in oklab, var(--accent-deep) 34%, white);
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--accent-glow) 54%, white);
-  color: var(--text-strong);
+.mini-badge {
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
   font-weight: 700;
+  border: 1px solid var(--line-soft);
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+}
+.mini-badge.physical {
+  background-color: var(--pastel-green-bg);
+  color: var(--pastel-green-text);
+  border-color: rgba(52, 101, 56, 0.15);
+}
+.mini-badge.audiobook {
+  background-color: var(--pastel-yellow-bg);
+  color: var(--pastel-yellow-text);
+  border-color: rgba(149, 100, 0, 0.15);
+}
+.mini-badge.ebook_pdf, .mini-badge.ebook_epub {
+  background-color: var(--pastel-blue-bg);
+  color: var(--pastel-blue-text);
+  border-color: rgba(31, 108, 159, 0.15);
 }
 
-@media (max-width: 1020px) {
-  .catalog-intro {
-    grid-template-columns: 1fr;
-  }
-
-  .mood-filter {
-    justify-content: flex-start;
-  }
-
-  .library-book {
-    grid-template-columns: 7rem minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .library-book-action {
-    grid-column: 1 / -1;
-    justify-items: start;
-  }
+.book-card-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
-@media (max-width: 760px) {
-  .library-page {
-    padding: 10rem 0.9rem 5rem;
-  }
-
-  .library-hero h1 {
-    max-width: 100%;
-    font-size: clamp(2.5rem, 14vw, 4.6rem);
-    letter-spacing: 0.005em;
-  }
-
-  .library-book {
-    grid-template-columns: 5.8rem minmax(0, 1fr);
-    gap: 0.85rem;
-  }
-
-  .library-cover {
-    min-height: 8.4rem;
-  }
-
-  .library-book-action .read-button {
-    width: 100%;
-  }
+.book-authors-line {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-@keyframes library-rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
+.book-card-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text-strong);
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 2.5rem;
 }
 
-@keyframes library-book-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
+.book-publisher {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 1rem;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .library-hero,
-  .catalog-section,
-  .library-book--animated {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    animation-iteration-count: 1 !important;
-  }
+.book-card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 0.75rem;
+}
 
-  .search-field,
-  .mood-filter button,
-  .library-book,
-  .library-book-action .read-button {
-    transition-duration: 0.01ms !important;
+.book-price {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.book-stock-tag {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background-color: var(--pastel-green-bg);
+  color: var(--pastel-green-text);
+  border: 1px solid rgba(52, 101, 56, 0.1);
+}
+
+.book-stock-tag.out-of-stock {
+  background-color: var(--pastel-red-bg);
+  color: var(--pastel-red-text);
+  border: 1px solid rgba(159, 47, 45, 0.1);
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+  .catalog-controls {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

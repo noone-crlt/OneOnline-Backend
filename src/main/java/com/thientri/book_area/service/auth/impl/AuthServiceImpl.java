@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.thientri.book_area.dto.request.user.LoginRequest;
 import com.thientri.book_area.dto.request.user.RegisterRequest;
+import com.thientri.book_area.dto.request.user.UpdateProfileRequest;
 import com.thientri.book_area.dto.response.user.AuthResponse;
 import com.thientri.book_area.exception.BadRequestException;
 import com.thientri.book_area.mapper.UserMapper;
@@ -76,6 +77,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse login(LoginRequest request) {
 
         // 1. Kích hoạt Spring Security kiểm tra Email và Password
@@ -104,6 +106,18 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     // Helper method xử lý tạo Refresh Token an toàn
+    @Override
+    @Transactional
+    public User updateProfile(User currentUser, UpdateProfileRequest request) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản."));
+
+        user.setFullName(request.getFullName().trim());
+        String phone = request.getPhone();
+        user.setPhone(phone == null || phone.isBlank() ? null : phone.trim());
+        return userRepository.save(user);
+    }
+
     private String generateAndSaveRefreshToken(User user) {
         // Thu hồi (xóa) các token cũ của thiết bị trước để tránh spam rác DB
         refreshTokenRepository.deleteByUser(user);

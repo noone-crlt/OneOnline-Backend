@@ -7,10 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -18,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.thientri.book_area.security.JwtAuthenticationFilter;
+import com.thientri.book_area.repository.user.UserRepository;
 
 @Configuration
 public class SecurityConfig {
@@ -38,8 +42,23 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    public UserDetailsService userDetailsService(UserRepository userRepository) {
+        return email -> userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy tài khoản."));
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        return provider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(DaoAuthenticationProvider authenticationProvider) {
+        return new ProviderManager(authenticationProvider);
     }
 
     @Bean
@@ -49,7 +68,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/data/**").permitAll()
+                        .requestMatchers("/data/**", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/",
                                 "/css/**",
@@ -65,16 +84,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/books",
                                 "/api/books/**",
-                                "/api/files/download")
+                                "/api/categories",
+                                "/api/categories/**",
+                                "/api/public/**",
+                                "/api/files/download",
+                                "/api/payments/vnpay-return",
+                                "/api/payments/vnpay-ipn")
                         .permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/editions/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/cart/**", "/api/orders/**", "/api/reading/**", "/api/library/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.GET,
                                 "/api/audiobooks",
                                 "/api/audio-chapters",
                                 "/api/authors",
                                 "/api/book-images",
-                                "/api/categories",
                                 "/api/inventory-logs",
                                 "/api/users")
                         .hasAuthority("ADMIN")

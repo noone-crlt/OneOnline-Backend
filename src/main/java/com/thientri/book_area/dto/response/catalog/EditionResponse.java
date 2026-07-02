@@ -20,7 +20,9 @@ public class EditionResponse {
     private BigDecimal salePrice;
     private Integer stock;
     private String coverObjectName;
-    private String fileObjectName; 
+    private String coverUrl;
+    private String fileObjectName;
+    private String fileUrl;
     private Integer duration; // Tổng thời lượng (nếu có)
     
     // Nếu là sách nói, trả kèm danh sách chương đã sắp xếp

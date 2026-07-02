@@ -51,22 +51,22 @@ public class Order {
     // ==========================================
     // SNAPSHOT ĐỊA CHỈ (Đóng băng lịch sử giao hàng)
     // ==========================================
-    @Column(name = "recipient_name", length = 255, nullable = false)
+    @Column(name = "recipient_name", length = 255)
     private String recipientName;
 
-    @Column(name = "recipient_phone", length = 20, nullable = false)
+    @Column(name = "recipient_phone", length = 20)
     private String recipientPhone;
 
-    @Column(name = "shipping_address_line", columnDefinition = "NVARCHAR(MAX)", nullable = false)
+    @Column(name = "shipping_address_line", columnDefinition = "NVARCHAR(MAX)")
     private String shippingAddressLine;
 
-    @Column(name = "shipping_province_name", length = 100, nullable = false)
+    @Column(name = "shipping_province_name", length = 100)
     private String shippingProvinceName;
 
-    @Column(name = "shipping_district_name", length = 100, nullable = false)
+    @Column(name = "shipping_district_name", length = 100)
     private String shippingDistrictName;
 
-    @Column(name = "shipping_ward_name", length = 100, nullable = false)
+    @Column(name = "shipping_ward_name", length = 100)
     private String shippingWardName;
 
     @Column(name = "tracking_code", length = 100)

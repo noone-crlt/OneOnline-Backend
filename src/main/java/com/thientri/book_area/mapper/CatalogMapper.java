@@ -15,9 +15,16 @@ import com.thientri.book_area.model.catalog.Book;
 import com.thientri.book_area.model.catalog.BookEdition;
 import com.thientri.book_area.model.catalog.BookImage;
 import com.thientri.book_area.model.catalog.Category;
+import com.thientri.book_area.service.minio.MinioService;
 
 @Component
 public class CatalogMapper {
+
+    private final MinioService minioService;
+
+    public CatalogMapper(MinioService minioService) {
+        this.minioService = minioService;
+    }
 
     // ==========================================
     // 1. MAPPER: Sách Gốc -> BookDetailResponse
@@ -69,6 +76,7 @@ public class CatalogMapper {
                 .salePrice(edition.getSalePrice())
                 .stock(edition.getStock())
                 .coverObjectName(edition.getCoverObjectName())
+                .coverUrl(getPresignedUrl(edition.getCoverObjectName()))
                 .fileObjectName(edition.getFileObjectName())
                 .duration(edition.getDuration());
 
@@ -80,6 +88,18 @@ public class CatalogMapper {
         }
 
         return builder.build();
+    }
+
+    private String getPresignedUrl(String objectName) {
+        if (objectName == null || objectName.isBlank()) {
+            return null;
+        }
+
+        try {
+            return minioService.getPresignedUrl(objectName);
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     // ==========================================

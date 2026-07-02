@@ -44,75 +44,91 @@ public class BookEditionServiceImpl implements IBookEditionService {
                               MultipartFile contentFile, 
                               List<MultipartFile> audioFiles) {
         
-        // 1. Kiểm tra sách gốc và mã SKU
-        Book book = bookRepository.findById(request.getBookId())
-                .orElseThrow(() -> new BadRequestException("Không tìm thấy sách gốc với ID: " + request.getBookId()));
+        List<String> uploadedObjects = new ArrayList<>();
+        try {
+            // 1. Kiểm tra sách gốc và mã SKU
+            Book book = bookRepository.findById(request.getBookId())
+                    .orElseThrow(() -> new BadRequestException("Không tìm thấy sách gốc với ID: " + request.getBookId()));
 
-        if (bookEditionRepository.findBySkuCode(request.getSkuCode()).isPresent()) {
-            throw new BadRequestException("Mã SKU này đã tồn tại trong hệ thống.");
-        }
+            if (bookEditionRepository.findBySkuCode(request.getSkuCode()).isPresent()) {
+                throw new BadRequestException("Mã SKU này đã tồn tại trong hệ thống.");
+            }
 
-        // 2. Cross-field Validation (Kiểm tra chéo nghiệp vụ khắt khe)
-        validateFormatLogic(request, contentFile, audioFiles);
+            // 2. Cross-field Validation (Kiểm tra chéo nghiệp vụ khắt khe)
+            validateFormatLogic(request, contentFile, audioFiles);
 
-        // 3. Xử lý Upload Ảnh Bìa (Dùng chung cho mọi định dạng nếu có)
-        String coverObjectName = null;
-        if (coverFile != null && !coverFile.isEmpty()) {
-            coverObjectName = minioService.uploadFile(coverFile, "covers");
-        }
+            // 3. Xử lý Upload Ảnh Bìa (Dùng chung cho mọi định dạng nếu có)
+            String coverObjectName = null;
+            if (coverFile != null && !coverFile.isEmpty()) {
+                coverObjectName = minioService.uploadFile(coverFile, "covers");
+                uploadedObjects.add(coverObjectName);
+            }
 
-        // 4. Khởi tạo Entity Phiên bản (Edition)
-        BookEdition newEdition = BookEdition.builder()
-                .book(book)
-                .format(request.getFormat())
-                .skuCode(request.getSkuCode())
-                .originalPrice(request.getOriginalPrice())
-                .salePrice(request.getSalePrice())
-                .stock(request.getFormat().equals("PHYSICAL") ? request.getStock() : null)
-                .coverObjectName(coverObjectName)
-                .duration(request.getDuration())
-                .build();
+            // 4. Khởi tạo Entity Phiên bản (Edition)
+            BookEdition newEdition = BookEdition.builder()
+                    .book(book)
+                    .format(request.getFormat())
+                    .skuCode(request.getSkuCode())
+                    .originalPrice(request.getOriginalPrice())
+                    .salePrice(request.getSalePrice())
+                    .stock(request.getFormat().equals("PHYSICAL") ? request.getStock() : null)
+                    .coverObjectName(coverObjectName)
+                    .duration(request.getDuration())
+                    .build();
 
-        // 5. Xử lý logic riêng cho từng định dạng
-        switch (request.getFormat()) {
-            case "EBOOK_PDF":
-            case "EBOOK_EPUB":
-                // Upload file mềm
-                String fileObjectName = minioService.uploadFile(contentFile, "ebooks");
-                newEdition.setFileObjectName(fileObjectName);
-                break;
+            // 5. Xử lý logic riêng cho từng định dạng
+            switch (request.getFormat()) {
+                case "EBOOK_PDF":
+                case "EBOOK_EPUB":
+                    // Upload file mềm
+                    String fileObjectName = minioService.uploadFile(contentFile, "ebooks");
+                    uploadedObjects.add(fileObjectName);
+                    newEdition.setFileObjectName(fileObjectName);
+                    break;
 
-            case "AUDIOBOOK":
-                // Map Người đọc (Narrators)
-                if (request.getNarratorIds() != null && !request.getNarratorIds().isEmpty()) {
-                    List<Narrator> narrators = narratorRepository.findAllById(request.getNarratorIds());
-                    newEdition.setNarrators(new HashSet<>(narrators));
+                case "AUDIOBOOK":
+                    // Map Người đọc (Narrators)
+                    if (request.getNarratorIds() != null && !request.getNarratorIds().isEmpty()) {
+                        List<Narrator> narrators = narratorRepository.findAllById(request.getNarratorIds());
+                        newEdition.setNarrators(new HashSet<>(narrators));
+                    }
+
+                    // Xử lý Upload các chương âm thanh
+                    List<EditionAudioChapter> chapters = new ArrayList<>();
+                    for (int i = 0; i < request.getAudioChapters().size(); i++) {
+                        AudioChapterCreateRequest chapterDTO = request.getAudioChapters().get(i);
+                        MultipartFile audioFile = audioFiles.get(i); // Giả định frontend gửi mảng file khớp thứ tự DTO
+
+                        String audioFileName = minioService.uploadFile(audioFile, "audiobooks");
+                        uploadedObjects.add(audioFileName);
+
+                        EditionAudioChapter chapter = EditionAudioChapter.builder()
+                                .edition(newEdition)
+                                .chapterNumber(chapterDTO.getChapterNumber())
+                                .title(chapterDTO.getTitle())
+                                .audioFileName(audioFileName)
+                                .duration(chapterDTO.getDuration())
+                                .build();
+                        chapters.add(chapter);
+                    }
+                    newEdition.setAudioChapters(chapters);
+                    break;
+            }
+
+            // 6. Lưu xuống Database (CascadeType.ALL sẽ tự động lưu luôn các AudioChapter)
+            bookEditionRepository.save(newEdition);
+            log.info("Tạo phiên bản sách thành công: SKU {}", request.getSkuCode());
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo phiên bản sách, bắt đầu dọn dẹp các file đã upload lên MinIO: ", e);
+            for (String objectName : uploadedObjects) {
+                try {
+                    minioService.deleteFile(objectName);
+                } catch (Exception ex) {
+                    log.error("Không thể dọn dẹp file {} sau lỗi: ", objectName, ex);
                 }
-
-                // Xử lý Upload các chương âm thanh
-                List<EditionAudioChapter> chapters = new ArrayList<>();
-                for (int i = 0; i < request.getAudioChapters().size(); i++) {
-                    AudioChapterCreateRequest chapterDTO = request.getAudioChapters().get(i);
-                    MultipartFile audioFile = audioFiles.get(i); // Giả định frontend gửi mảng file khớp thứ tự DTO
-
-                    String audioFileName = minioService.uploadFile(audioFile, "audiobooks");
-
-                    EditionAudioChapter chapter = EditionAudioChapter.builder()
-                            .edition(newEdition)
-                            .chapterNumber(chapterDTO.getChapterNumber())
-                            .title(chapterDTO.getTitle())
-                            .audioFileName(audioFileName)
-                            .duration(chapterDTO.getDuration())
-                            .build();
-                    chapters.add(chapter);
-                }
-                newEdition.setAudioChapters(chapters);
-                break;
+            }
+            throw e;
         }
-
-        // 6. Lưu xuống Database (CascadeType.ALL sẽ tự động lưu luôn các AudioChapter)
-        bookEditionRepository.save(newEdition);
-        log.info("Tạo phiên bản sách thành công: SKU {}", request.getSkuCode());
     }
 
     // =========================================================
@@ -159,28 +175,62 @@ public class BookEditionServiceImpl implements IBookEditionService {
             edition.setNarrators(new HashSet<>(narratorRepository.findAllById(request.getNarratorIds())));
         }
 
-        // THAY THẾ ẢNH BÌA: Xóa ảnh cũ -> Upload ảnh mới
-        if (newCoverFile != null && !newCoverFile.isEmpty()) {
-            if (edition.getCoverObjectName() != null) {
-                minioService.deleteFile(edition.getCoverObjectName());
-            }
-            String newCover = minioService.uploadFile(newCoverFile, "covers");
-            edition.setCoverObjectName(newCover);
-        }
+        List<String> uploadedObjects = new ArrayList<>();
+        String oldCoverToDelete = null;
+        String oldContentToDelete = null;
 
-        // THAY THẾ FILE NỘI DUNG (PDF/EPUB)
-        if (newContentFile != null && !newContentFile.isEmpty()) {
-            if (!edition.getFormat().startsWith("EBOOK")) {
-                throw new BadRequestException("Chỉ Ebook mới có thể cập nhật file nội dung.");
+        try {
+            // THAY THẾ ẢNH BÌA: Xóa ảnh cũ -> Upload ảnh mới
+            if (newCoverFile != null && !newCoverFile.isEmpty()) {
+                if (edition.getCoverObjectName() != null) {
+                    oldCoverToDelete = edition.getCoverObjectName();
+                }
+                String newCover = minioService.uploadFile(newCoverFile, "covers");
+                uploadedObjects.add(newCover);
+                edition.setCoverObjectName(newCover);
             }
-            if (edition.getFileObjectName() != null) {
-                minioService.deleteFile(edition.getFileObjectName());
-            }
-            String newContent = minioService.uploadFile(newContentFile, "ebooks");
-            edition.setFileObjectName(newContent);
-        }
 
-        bookEditionRepository.save(edition);
+            // THAY THẾ FILE NỘI DUNG (PDF/EPUB)
+            if (newContentFile != null && !newContentFile.isEmpty()) {
+                if (!edition.getFormat().startsWith("EBOOK")) {
+                    throw new BadRequestException("Chỉ Ebook mới có thể cập nhật file nội dung.");
+                }
+                if (edition.getFileObjectName() != null) {
+                    oldContentToDelete = edition.getFileObjectName();
+                }
+                String newContent = minioService.uploadFile(newContentFile, "ebooks");
+                uploadedObjects.add(newContent);
+                edition.setFileObjectName(newContent);
+            }
+
+            bookEditionRepository.save(edition);
+
+            // Dọn dẹp các file cũ thực tế sau khi DB save thành công
+            if (oldCoverToDelete != null) {
+                try {
+                    minioService.deleteFile(oldCoverToDelete);
+                } catch (Exception e) {
+                    log.error("Lỗi khi xóa ảnh bìa cũ {}", oldCoverToDelete, e);
+                }
+            }
+            if (oldContentToDelete != null) {
+                try {
+                    minioService.deleteFile(oldContentToDelete);
+                } catch (Exception e) {
+                    log.error("Lỗi khi xóa file nội dung cũ {}", oldContentToDelete, e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi cập nhật phiên bản sách, dọn dẹp các file mới vừa upload lên MinIO: ", e);
+            for (String objectName : uploadedObjects) {
+                try {
+                    minioService.deleteFile(objectName);
+                } catch (Exception ex) {
+                    log.error("Không thể dọn dẹp file {} sau lỗi: ", objectName, ex);
+                }
+            }
+            throw e;
+        }
     }
 
     @Override

@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.thientri.book_area.model.user.RefreshToken;
 import com.thientri.book_area.model.user.User;
@@ -23,6 +24,7 @@ public class RefreshTokenService {
     }
 
     // Tạo RefreshToken để người dùng có thể duy trì đăng nhập trong 7 ngày
+    @Transactional
     public RefreshToken createRefreshToken(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Khong tim thay nguoi dung de tao RefreshToken!"));
@@ -36,6 +38,7 @@ public class RefreshTokenService {
     }
 
     // Kiểm tra RefreshToken có còn hạn sử dụng 7 hay không
+    @Transactional
     public RefreshToken verifyExpiration(RefreshToken refreshToken) {
         if (refreshToken.getExpiryDate().isBefore(LocalDateTime.now())) {
             refreshTokenRepository.deleteById(refreshToken.getId());
@@ -44,6 +47,7 @@ public class RefreshTokenService {
         return refreshToken;
     }
 
+    @Transactional(readOnly = true)
     public Optional<RefreshToken> findByToken(String token) {
         return refreshTokenRepository.findByRefreshToken(token);
     }

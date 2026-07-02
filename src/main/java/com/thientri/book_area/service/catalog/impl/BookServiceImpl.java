@@ -14,6 +14,7 @@ import com.thientri.book_area.dto.request.catalog.BookCreateRequest;
 import com.thientri.book_area.dto.request.catalog.BookUpdateRequest;
 import com.thientri.book_area.dto.response.catalog.BookDetailResponse;
 import com.thientri.book_area.exception.BadRequestException;
+import com.thientri.book_area.exception.ResourceNotFoundException;
 import com.thientri.book_area.mapper.CatalogMapper;
 import com.thientri.book_area.model.catalog.Author;
 import com.thientri.book_area.model.catalog.Book;
@@ -51,9 +52,10 @@ public class BookServiceImpl implements IBookService {
     // ==========================================
     
     @Override
+    @Transactional(readOnly = true)
     public BookDetailResponse getBookDetailBySlug(String slug) {
         Book book = bookRepository.findBySlug(slug)
-                .orElseThrow(() -> new BadRequestException("Không tìm thấy sách với đường dẫn: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách với đường dẫn: " + slug));
 
         // Tùy chọn: Chặn người dùng xem sách đã bị vô hiệu hóa (Chỉ Admin mới được xem)
         if (!book.getIsActive()) {

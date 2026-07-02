@@ -1,7 +1,5 @@
 package com.thientri.book_area.dto.response.admin;
 
-import java.math.BigDecimal;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,8 +15,6 @@ public class AdminMonthlyStatsResponse {
     private String month;
     private long newUsers;
     private long newBooks;
-    private long newChapters;
-    private long views;
     private long comments;
-    private BigDecimal revenue;
+    private java.math.BigDecimal revenue;
 }

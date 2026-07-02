@@ -556,12 +556,12 @@ INSERT INTO book_categories (book_id, category_id) VALUES
 GO
 
 -- 19. book_editions (Tạo đa dạng định dạng: Vật lý, PDF, Audio)
-INSERT INTO book_editions (book_id, format, sku_code, original_price, sale_price, stock, cover_object_name, duration) VALUES 
-(1, 'PHYSICAL', 'PHY-MB-001', 100000, 80000, 50, 'cover1.jpg', NULL),
-(2, 'EBOOK_PDF', 'PDF-RNU-001', 50000, 30000, NULL, 'cover2.jpg', NULL),
-(3, 'AUDIOBOOK', 'AUD-HP1-001', 120000, 100000, NULL, 'cover3.jpg', 600),
-(4, 'PHYSICAL', 'PHY-HVTT-001', 150000, 120000, 30, 'cover4.jpg', NULL),
-(5, 'EBOOK_EPUB', 'EPUB-SD-001', 40000, 20000, NULL, 'cover5.jpg', NULL);
+INSERT INTO book_editions (book_id, format, sku_code, original_price, sale_price, stock, cover_object_name, file_object_name, duration) VALUES 
+(1, 'PHYSICAL', 'PHY-MB-001', 100000, 80000, 50, 'sach/anhbia/matbiec.png', NULL, 'sach/_matbiec.pdf'),
+(2, 'EBOOK_PDF', 'PDF-RNU-001', 50000, 30000, NULL, 'sach/anhbia/rungnauy.png', 'sach/_rung-na-uy.pdf', NULL),
+(3, 'AUDIOBOOK', 'AUD-HP1-001', 120000, 100000, NULL, 'sach/anhbia/harrypotter.png', NULL, 600),
+(4, 'PHYSICAL', 'PHY-HVTT-001', 150000, 120000, 30, 'cover4.jpg', NULL, NULL),
+(5, 'EBOOK_EPUB', 'EPUB-SD-001', 40000, 20000, NULL, 'cover5.jpg', NULL, NULL);
 GO
 
 
@@ -661,3 +661,9 @@ INSERT INTO payments (order_id, payment_method_id, amount, status, transaction_i
 (4, 4, 270000, 'REFUNDED', 'TXN-ZAL-004'),
 (5, 5, 20000, 'SUCCESS', 'TXN-CRE-005');
 GO
+
+SELECT * FROM book_editions;
+SELECT * FROM order_status_history;
+select * from users;
+select * from user_roles;
+select * from roles

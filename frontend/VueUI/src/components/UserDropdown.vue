@@ -58,7 +58,7 @@ function handleLogout() {
         </button>
       </li>
       <li>
-        <button type="button" class="dropdown-item user-dropdown__item" @click="navigateTo('/library')">
+        <button type="button" class="dropdown-item user-dropdown__item" @click="navigateTo('/profile')">
           Thông tin cá nhân
         </button>
       </li>

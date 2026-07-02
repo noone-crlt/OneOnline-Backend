@@ -15,9 +15,27 @@ import com.thientri.book_area.model.order.Cart;
 import com.thientri.book_area.model.order.CartItem;
 import com.thientri.book_area.model.order.Order;
 import com.thientri.book_area.model.order.OrderItem;
+import com.thientri.book_area.service.minio.MinioService;
 
 @Component
 public class OrderMapper {
+
+    private final MinioService minioService;
+
+    public OrderMapper(MinioService minioService) {
+        this.minioService = minioService;
+    }
+
+    private String getPresignedUrl(String objectName) {
+        if (objectName == null || objectName.isBlank()) {
+            return null;
+        }
+        try {
+            return minioService.getPresignedUrl(objectName);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
 
     // ==========================================
     // 1. MAPPER: Cart -> CartResponse
@@ -58,7 +76,7 @@ public class OrderMapper {
                 // Trích xuất an toàn từ Book gốc
                 .bookTitle(edition.getBook() != null ? edition.getBook().getTitle() : "Sách không xác định")
                 .format(edition.getFormat())
-                .coverImageUrl(edition.getCoverObjectName())
+                .coverImageUrl(getPresignedUrl(edition.getCoverObjectName()))
                 .salePrice(price)
                 .quantity(qty)
                 .subTotal(subTotal)
@@ -112,7 +130,7 @@ public class OrderMapper {
                 .editionId(edition.getId())
                 .bookTitle(edition.getBook() != null ? edition.getBook().getTitle() : "Sách không xác định")
                 .format(edition.getFormat())
-                .coverImageUrl(edition.getCoverObjectName())
+                .coverImageUrl(getPresignedUrl(edition.getCoverObjectName()))
                 .salePrice(price) // Sử dụng giá chốt lúc mua trong OrderItem
                 .quantity(qty)
                 .subTotal(price.multiply(BigDecimal.valueOf(qty)))

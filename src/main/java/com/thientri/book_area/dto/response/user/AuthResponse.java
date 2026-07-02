@@ -14,5 +14,6 @@ public class AuthResponse {
     private Long userId;
     private String email;
     private String fullName;
+    private String phone;
     private List<String> roles; // Chỉ trả về List String, ví dụ: ["ROLE_USER", "ROLE_ADMIN"]
 }

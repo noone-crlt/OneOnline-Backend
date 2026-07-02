@@ -12,8 +12,11 @@ public class UserLibraryResponse {
     
     // Dữ liệu làm phẳng từ Book và BookEdition
     private String bookTitle;
+    private String slug;
+    private String authorName;
     private String format; // EBOOK_PDF, AUDIOBOOK
     private String coverImageUrl;
+    private String coverUrl;
     
     // ĐƯỜNG DẪN TÀI SẢN KỸ THUẬT SỐ (Cốt lõi của bảng này)
     private String fileObjectName; // Dùng để gọi MinIO lấy file PDF/EPUB

@@ -39,6 +39,7 @@ public class EditionCreateRequest {
     private String coverObjectName; // Ảnh bìa riêng cho phiên bản này
     private String fileObjectName;  // File PDF/EPUB hoặc File nén
 
+
     // ==========================================
     // DỮ LIỆU ĐẶC THÙ CHO SÁCH NÓI (AUDIOBOOK)
     // ==========================================

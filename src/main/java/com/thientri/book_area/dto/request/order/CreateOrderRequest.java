@@ -5,7 +5,6 @@ import lombok.Data;
 
 @Data
 public class CreateOrderRequest {
-    @NotNull(message = "Vui lòng chọn địa chỉ giao hàng")
     private Long addressId;
 
     @NotNull(message = "Vui lòng chọn phương thức thanh toán")
