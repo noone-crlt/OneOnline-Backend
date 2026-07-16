@@ -8,7 +8,13 @@ import lombok.Setter;
 @Getter
 @Setter
 public class WebhookRequest {
-    private String transactionId; // ID giao dịch từ của ngân hàng
-    private BigDecimal amountIn; // Số tiền đã thanh toán
-    private String transactionContent; // Nội dung giao dịch
+	private Long id;
+	private String gateway;
+	private String transactionDate;
+	private String accountNumber;
+	private String code;
+	private String content;
+	private String transferType;
+	private BigDecimal transferAmount;
+	private String referenceCode;
 }

@@ -26,135 +26,92 @@ import com.thientri.book_area.repository.user.UserRepository;
 @Configuration
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final List<String> allowedOriginPatterns;
+	private final JwtAuthenticationFilter jwtAuthFilter;
+	private final List<String> allowedOriginPatterns;
 
-    public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthFilter,
-            @Value("${app.cors.allowed-origin-patterns}") List<String> allowedOriginPatterns) {
-        this.jwtAuthFilter = jwtAuthFilter;
-        this.allowedOriginPatterns = allowedOriginPatterns;
-    }
+	public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+			@Value("${app.cors.allowed-origin-patterns}") List<String> allowedOriginPatterns) {
+		this.jwtAuthFilter = jwtAuthFilter;
+		this.allowedOriginPatterns = allowedOriginPatterns;
+	}
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
-    @Bean
-    public UserDetailsService userDetailsService(UserRepository userRepository) {
-        return email -> userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy tài khoản."));
-    }
+	@Bean
+	public UserDetailsService userDetailsService(UserRepository userRepository) {
+		return email -> userRepository.findByEmail(email)
+				.orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy tài khoản."));
+	}
 
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider(
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder);
-        return provider;
-    }
+	@Bean
+	public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
+			PasswordEncoder passwordEncoder) {
+		DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+		provider.setPasswordEncoder(passwordEncoder);
+		return provider;
+	}
 
-    @Bean
-    public AuthenticationManager authenticationManager(DaoAuthenticationProvider authenticationProvider) {
-        return new ProviderManager(authenticationProvider);
-    }
+	@Bean
+	public AuthenticationManager authenticationManager(DaoAuthenticationProvider authenticationProvider) {
+		return new ProviderManager(authenticationProvider);
+	}
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/data/**", "/error").permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                "/",
-                                "/css/**",
-                                "/js/**",
-                                "/images/**",
-                                "/favicon.ico")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/auth/login",
-                                "/api/auth/register",
-                                "/api/auth/refresh")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/books",
-                                "/api/books/**",
-                                "/api/categories",
-                                "/api/categories/**",
-                                "/api/public/**",
-                                "/api/files/download",
-                                "/api/payments/vnpay-return",
-                                "/api/payments/vnpay-ipn")
-                        .permitAll()
-                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/editions/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/cart/**", "/api/orders/**", "/api/reading/**", "/api/library/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/audiobooks",
-                                "/api/audio-chapters",
-                                "/api/authors",
-                                "/api/book-images",
-                                "/api/inventory-logs",
-                                "/api/users")
-                        .hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/books",
-                                "/api/audiobooks",
-                                "/api/audio-chapters",
-                                "/api/authors",
-                                "/api/book-images",
-                                "/api/categories",
-                                "/api/inventory-logs")
-                        .hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.PUT,
-                                "/api/books/**",
-                                "/api/audiobooks/**",
-                                "/api/audio-chapters/**",
-                                "/api/authors/**",
-                                "/api/book-images/**",
-                                "/api/categories/**",
-                                "/api/inventory-logs/**",
-                                "/api/users/**")
-                        .hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE,
-                                "/api/books/**",
-                                "/api/audiobooks/**",
-                                "/api/audio-chapters/**",
-                                "/api/authors/**",
-                                "/api/book-images/**",
-                                "/api/categories/**",
-                                "/api/inventory-logs/**",
-                                "/api/users/**")
-                        .hasAuthority("ADMIN")
-                        .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(csrf -> csrf.disable())
+				.exceptionHandling(exception -> exception
+						.authenticationEntryPoint((request, response, authException) -> response
+								.sendError(401, "Chưa xác thực hoặc token không hợp lệ"))
+						.accessDeniedHandler((request, response, accessDeniedException) -> response
+								.sendError(403, "Bạn không có quyền truy cập tài nguyên này")))
+				.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+						.requestMatchers("/data/**", "/error").permitAll()
+						.requestMatchers(HttpMethod.GET, "/", "/css/**", "/js/**", "/images/**", "/favicon.ico")
+						.permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/refresh")
+						.permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**", "/api/categories",
+								"/api/categories/**", "/api/public/**", "/api/files/download")
+						.permitAll().requestMatchers(HttpMethod.POST, "/api/payments/sepay-webhook").permitAll()
+						.requestMatchers("/api/admin/**").hasAuthority("ADMIN").requestMatchers("/api/editions/**")
+						.hasAuthority("ADMIN")
+						.requestMatchers("/api/cart/**", "/api/orders/**", "/api/reading/**", "/api/library/**")
+						.authenticated().requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ADMIN")
+						.requestMatchers(HttpMethod.GET, "/api/audiobooks", "/api/audio-chapters", "/api/authors",
+								"/api/book-images", "/api/inventory-logs", "/api/users")
+						.hasAuthority("ADMIN")
+						.requestMatchers(HttpMethod.POST, "/api/books", "/api/audiobooks", "/api/audio-chapters",
+								"/api/authors", "/api/book-images", "/api/categories", "/api/inventory-logs")
+						.hasAuthority("ADMIN")
+						.requestMatchers(HttpMethod.PUT, "/api/books/**", "/api/audiobooks/**",
+								"/api/audio-chapters/**", "/api/authors/**", "/api/book-images/**",
+								"/api/categories/**", "/api/inventory-logs/**", "/api/users/**")
+						.hasAuthority("ADMIN")
+						.requestMatchers(HttpMethod.DELETE, "/api/books/**", "/api/audiobooks/**",
+								"/api/audio-chapters/**", "/api/authors/**", "/api/book-images/**",
+								"/api/categories/**", "/api/inventory-logs/**", "/api/users/**")
+						.hasAuthority("ADMIN").anyRequest().authenticated())
+				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+		return http.build();
+	}
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowCredentials(true);
-        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "Origin",
-                "X-Requested-With"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setMaxAge(3600L);
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowCredentials(true);
+		configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+		configuration
+				.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
+		configuration.setExposedHeaders(List.of("Authorization"));
+		configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
 }

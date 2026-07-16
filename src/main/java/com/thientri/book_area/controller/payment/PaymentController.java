@@ -1,22 +1,21 @@
 package com.thientri.book_area.controller.payment;
 
-import java.net.URI;
-import java.net.URLEncoder;
+import com.thientri.book_area.dto.response.ApiResponse;
+import com.thientri.book_area.dto.response.payment.PaymentStatusResponse;
+
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thientri.book_area.dto.request.payment.WebhookRequest;
 import com.thientri.book_area.exception.BadRequestException;
-import com.thientri.book_area.exception.ResourceNotFoundException;
-import com.thientri.book_area.model.payment.Payment;
+import com.thientri.book_area.model.user.User;
 import com.thientri.book_area.service.order.OrderService;
+import com.thientri.book_area.service.payment.SePayService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,41 +23,29 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
 public class PaymentController {
-    private final OrderService orderService;
+	private final OrderService orderService;
+	private final SePayService sePayService;
+	private final ObjectMapper objectMapper;
 
-    @Value("${app.frontend.payment-result-url}")
-    private String resultUrl;
+	@PostMapping("/sepay-webhook")
+	public ResponseEntity<ApiResponse<Void>> sePayWebhook(@RequestBody byte[] rawBody,
+			@RequestHeader(value = "X-SePay-Signature", required = false) String signature,
+			@RequestHeader(value = "X-SePay-Timestamp", required = false) String timestamp) {
+		try {
+			sePayService.verifySignature(rawBody, signature, timestamp);
+			WebhookRequest request = objectMapper.readValue(rawBody, WebhookRequest.class);
+			orderService.handleSePayWebhook(request, new String(rawBody, StandardCharsets.UTF_8));
+			return ResponseEntity.ok(ApiResponse.success("Webhook processed successfully", null));
+		} catch (BadRequestException exception) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(exception.getMessage()));
+		} catch (Exception exception) {
+			return ResponseEntity.badRequest().body(ApiResponse.error("Dữ liệu webhook SePay không hợp lệ."));
+		}
+	}
 
-    @GetMapping("/vnpay-return")
-    public ResponseEntity<Void> vnPayReturn(@RequestParam Map<String, String> params) {
-        String status = "failed";
-        String orderCode = params.getOrDefault("vnp_TxnRef", "");
-        try {
-            Payment payment = orderService.handleVnPayReturn(params);
-            status = payment.getStatus().name().toLowerCase();
-        } catch (RuntimeException exception) {
-            status = "invalid";
-        }
-        String query = "status=" + encode(status) + "&orderCode=" + encode(orderCode);
-        return ResponseEntity.status(302).location(URI.create(resultUrl + "?" + query)).build();
-    }
-
-    @GetMapping("/vnpay-ipn")
-    public ResponseEntity<Map<String, String>> vnPayIpn(@RequestParam Map<String, String> params) {
-        try {
-            orderService.handleVnPayReturn(params);
-            return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
-        } catch (ResourceNotFoundException exception) {
-            return ResponseEntity.ok(Map.of("RspCode", "01", "Message", "Order not found"));
-        } catch (BadRequestException exception) {
-            String responseCode = exception.getMessage().contains("Chữ ký") ? "97" : "04";
-            return ResponseEntity.ok(Map.of("RspCode", responseCode, "Message", exception.getMessage()));
-        } catch (RuntimeException exception) {
-            return ResponseEntity.ok(Map.of("RspCode", "99", "Message", "Unknown error"));
-        }
-    }
-
-    private String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
+	@GetMapping("/{orderCode}/status")
+	public ResponseEntity<ApiResponse<PaymentStatusResponse>> paymentStatus(@PathVariable String orderCode,
+			@AuthenticationPrincipal User user) {
+		return ResponseEntity.ok(ApiResponse.success(orderService.paymentStatus(user, orderCode)));
+	}
 }

@@ -22,18 +22,18 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Publisher {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "name", length = 255, nullable = false)
-    private String name;
+	@Column(name = "name", length = 255, nullable = false)
+	private String name;
 
-    // Sửa lại chuẩn SQL Server
-    @Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
-    private String description;
+	// Sửa lại chuẩn SQL Server
+	@Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
+	private String description;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+	@CreationTimestamp
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 }

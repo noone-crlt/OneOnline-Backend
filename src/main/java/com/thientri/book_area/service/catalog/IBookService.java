@@ -11,20 +11,20 @@ import com.thientri.book_area.dto.request.catalog.BookUpdateRequest;
 import com.thientri.book_area.dto.response.catalog.BookDetailResponse;
 
 public interface IBookService {
-    
-    BookDetailResponse getBookDetailBySlug(String slug);
-    
-    Page<BookDetailResponse> getAllBooks(Pageable pageable);
 
-    // THÊM: Bắt buộc truyền danh sách file ảnh đính kèm
-    void createBook(BookCreateRequest request, List<MultipartFile> imageFiles);
-    
-    void toggleBookActiveStatus(Long bookId, boolean isActive);
+	BookDetailResponse getBookDetailBySlug(String slug);
 
-    // Sửa thông tin cơ bản của sách
-    void updateBook(Long bookId, BookUpdateRequest request);
-    
-    // Quản lý ảnh của sách gốc
-    void addBookImages(Long bookId, List<MultipartFile> imageFiles);
-    void deleteBookImage(Long imageId);
+	Page<BookDetailResponse> getAllBooks(Pageable pageable);
+
+	// THÊM: Bắt buộc truyền danh sách file ảnh đính kèm
+	void createBook(BookCreateRequest request, List<MultipartFile> imageFiles);
+
+	void toggleBookActiveStatus(Long bookId, boolean isActive);
+
+	// Sửa thông tin cơ bản của sách
+	void updateBook(Long bookId, BookUpdateRequest request);
+
+	// Quản lý ảnh của sách gốc
+	
+	
 }

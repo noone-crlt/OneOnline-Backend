@@ -8,6 +8,6 @@ import com.thientri.book_area.model.promotion.UserCouponId;
 
 @Repository
 public interface UserCouponRepository extends JpaRepository<UserCoupon, UserCouponId> {
-    // Kiểm tra xem User đã lưu/sử dụng mã này chưa
-    Optional<UserCoupon> findByUserIdAndCouponId(Long userId, Long couponId);
+	// Kiểm tra xem User đã lưu/sử dụng mã này chưa
+	Optional<UserCoupon> findByUserIdAndCouponId(Long userId, Long couponId);
 }

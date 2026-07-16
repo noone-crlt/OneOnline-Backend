@@ -11,7 +11,7 @@ import com.thientri.book_area.dto.response.order.CartItemResponse;
 import com.thientri.book_area.dto.response.order.CartResponse;
 import com.thientri.book_area.dto.response.order.OrderResponse;
 import com.thientri.book_area.model.catalog.BookEdition;
-import com.thientri.book_area.model.order.Cart;
+
 import com.thientri.book_area.model.order.CartItem;
 import com.thientri.book_area.model.order.Order;
 import com.thientri.book_area.model.order.OrderItem;
@@ -38,25 +38,28 @@ public class OrderMapper {
     }
 
     // ==========================================
-    // 1. MAPPER: Cart -> CartResponse
+    // 1. MAPPER: List<CartItem> -> CartResponse
     // ==========================================
-    public CartResponse toCartResponse(Cart cart) {
-        if (cart == null) return null;
+    public CartResponse toCartResponse(List<CartItem> cartItems) {
+        if (cartItems == null || cartItems.isEmpty()) {
+            return CartResponse.builder()
+                .items(Collections.emptyList())
+                .totalItems(0)
+                .cartTotalAmount(BigDecimal.ZERO)
+                .build();
+        }
 
-        List<CartItemResponse> itemResponses = cart.getCartItems() == null ? 
-            Collections.emptyList() : 
-            cart.getCartItems().stream().map(this::toCartItemResponse).collect(Collectors.toList());
+        List<CartItemResponse> itemResponses = cartItems.stream().map(this::toCartItemResponse).collect(Collectors.toList());
 
         // Backend tự tính tổng tiền giỏ hàng, tuyệt đối không phụ thuộc Client
-        BigDecimal totalAmount = itemResponses.stream()
+        BigDecimal total = itemResponses.stream()
                 .map(CartItemResponse::getSubTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return CartResponse.builder()
-                .cartId(cart.getId())
                 .items(itemResponses)
                 .totalItems(itemResponses.size())
-                .cartTotalAmount(totalAmount)
+                .cartTotalAmount(total)
                 .build();
     }
 
@@ -102,7 +105,7 @@ public class OrderMapper {
 
         return OrderResponse.builder()
                 .orderCode(order.getOrderCode())
-                .status(order.getOrderStatus() != null ? order.getOrderStatus().getName() : "UNKNOWN")
+                .status(order.getStatus() != null ? order.getStatus().toString() : "UNKNOWN")
                 .recipientName(order.getRecipientName())
                 .recipientPhone(order.getRecipientPhone())
                 .fullShippingAddress(fullAddress)

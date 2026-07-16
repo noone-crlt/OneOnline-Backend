@@ -5,11 +5,11 @@ import lombok.Data;
 
 @Data
 public class CreateOrderRequest {
-    private Long addressId;
+	private Long addressId;
 
-    @NotNull(message = "Vui lòng chọn phương thức thanh toán")
-    private Long paymentMethodId;
+	@NotNull(message = "Vui lòng chọn phương thức thanh toán")
+	private String paymentMethod;
 
-    // Mã giảm giá là tùy chọn (có thể null)
-    private String couponCode;
+	// Mã giảm giá là tùy chọn (có thể null)
+	private String couponCode;
 }

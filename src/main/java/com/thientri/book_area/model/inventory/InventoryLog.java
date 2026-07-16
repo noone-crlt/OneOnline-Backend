@@ -29,27 +29,27 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class InventoryLog {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    // SỬA LỖI KIẾN TRÚC: Phải trỏ về Edition (Phiên bản sách), không phải sách gốc
-    @ManyToOne
-    @JoinColumn(name = "edition_id", nullable = false)
-    private BookEdition edition;
+	// SỬA LỖI KIẾN TRÚC: Phải trỏ về Edition (Phiên bản sách), không phải sách gốc
+	@ManyToOne
+	@JoinColumn(name = "edition_id", nullable = false)
+	private BookEdition edition;
 
-    @Column(name = "change_amount", nullable = false)
-    private Integer changeAmount;
+	@Column(name = "change_amount", nullable = false)
+	private Integer changeAmount;
 
-    @Column(name = "reason", length = 255)
-    private String reason;
+	@Column(name = "reason", length = 255)
+	private String reason;
 
-    // THÊM MỚI: Dấu vết kiểm toán (Ai là người sửa kho?)
-    @ManyToOne
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+	// THÊM MỚI: Dấu vết kiểm toán (Ai là người sửa kho?)
+	@ManyToOne
+	@JoinColumn(name = "created_by")
+	private User createdBy;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+	@CreationTimestamp
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 }

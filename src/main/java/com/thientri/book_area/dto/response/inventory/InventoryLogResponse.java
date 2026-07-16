@@ -14,9 +14,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class InventoryLogResponse {
-    private Long id;
-    private Long bookId;
-    private Integer changeAmount;
-    private String reason;
-    private LocalDateTime createdAt;
+	private Long id;
+	private Long bookId;
+	private Integer changeAmount;
+	private String reason;
+	private LocalDateTime createdAt;
 }

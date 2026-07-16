@@ -7,7 +7,7 @@ import com.thientri.book_area.model.catalog.BookEdition;
 
 @Repository
 public interface BookEditionRepository extends JpaRepository<BookEdition, Long> {
-    
-    // Tìm phiên bản cụ thể bằng mã kho
-    Optional<BookEdition> findBySkuCode(String skuCode);
+
+	// Tìm phiên bản cụ thể bằng mã kho
+	Optional<BookEdition> findBySkuCode(String skuCode);
 }

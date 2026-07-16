@@ -15,12 +15,21 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class LibraryService {
-    private final UserLibraryRepository libraryRepository;
-    private final EngagementMapper engagementMapper;
+	private final UserLibraryRepository libraryRepository;
+	private final EngagementMapper engagementMapper;
 
-    @Transactional(readOnly = true)
-    public Page<UserLibraryResponse> getLibrary(User user, int page, int size) {
-        return libraryRepository.findByUserIdOrderByAcquiredAtDesc(user.getId(), PageRequest.of(page, size))
-                .map(item -> engagementMapper.toUserLibraryResponse(item, 0));
-    }
+	@Transactional(readOnly = true)
+	public Page<UserLibraryResponse> getLibrary(User user, int page, int size) {
+		return libraryRepository.findByUserIdOrderByAcquiredAtDesc(user.getId(), PageRequest.of(page, size))
+				.map(item -> engagementMapper.toUserLibraryResponse(item,
+						item.getProgress() != null ? item.getProgress() : 0));
+	}
+
+	@Transactional
+	public void saveProgress(User user, Long editionId, int progress) {
+		libraryRepository.findByUserIdAndEditionId(user.getId(), editionId).ifPresent(item -> {
+			item.setProgress(progress);
+			libraryRepository.save(item);
+		});
+	}
 }

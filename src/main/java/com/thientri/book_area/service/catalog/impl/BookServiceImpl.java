@@ -18,11 +18,11 @@ import com.thientri.book_area.exception.ResourceNotFoundException;
 import com.thientri.book_area.mapper.CatalogMapper;
 import com.thientri.book_area.model.catalog.Author;
 import com.thientri.book_area.model.catalog.Book;
-import com.thientri.book_area.model.catalog.BookImage;
+
 import com.thientri.book_area.model.catalog.Category;
 import com.thientri.book_area.model.catalog.Publisher;
 import com.thientri.book_area.repository.catalog.AuthorRepository;
-import com.thientri.book_area.repository.catalog.BookImageRepository;
+
 import com.thientri.book_area.repository.catalog.BookRepository;
 import com.thientri.book_area.repository.catalog.CategoryRepository;
 import com.thientri.book_area.repository.catalog.PublisherRepository;
@@ -39,7 +39,7 @@ public class BookServiceImpl implements IBookService {
 
     // Tiêm các Repository và Service cần thiết
     private final BookRepository bookRepository;
-    private final BookImageRepository bookImageRepository;
+    
     private final PublisherRepository publisherRepository;
     private final AuthorRepository authorRepository;
     private final CategoryRepository categoryRepository;
@@ -112,26 +112,8 @@ public class BookServiceImpl implements IBookService {
                 .categories(new HashSet<>(categories))
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .build();
-
-        // 5. Xử lý Upload Ảnh và kết nối quan hệ 1-N (Book - BookImage)
-        if (imageFiles != null && !imageFiles.isEmpty()) {
-            List<BookImage> bookImages = new ArrayList<>();
-            for (MultipartFile file : imageFiles) {
-                // Upload lên bucket/folder 'books'
-                String imageUrl = minioService.uploadFile(file, "books");
-                
-                BookImage bookImage = BookImage.builder()
-                        .book(newBook) // Set ngược lại Book để Hibernate lưu khóa ngoại
-                        .imageFileName(imageUrl)
-                        .build();
-                        
-                bookImages.add(bookImage);
-            }
-            newBook.setImages(bookImages);
-        }
-
         // 6. Lưu tất cả vào Database
-        // Nhờ cấu hình CascadeType.ALL ở mảng Images, bạn chỉ cần save(newBook) là các ảnh tự động được lưu.
+        // Sách không còn BookImage, lưu trực tiếp
         bookRepository.save(newBook);
         log.info("Đã tạo thành công sách mới: {}", newBook.getTitle());
     }
@@ -176,35 +158,5 @@ public class BookServiceImpl implements IBookService {
         bookRepository.save(book);
     }
 
-    @Override
-    @Transactional
-    public void addBookImages(Long bookId, List<MultipartFile> imageFiles) {
-        Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new BadRequestException("Không tìm thấy sách."));
-        
-        if (imageFiles != null && !imageFiles.isEmpty()) {
-            for (MultipartFile file : imageFiles) {
-                String imageUrl = minioService.uploadFile(file, "books");
-                bookImageRepository.save(BookImage.builder()
-                        .book(book)
-                        .imageFileName(imageUrl)
-                        .build());
-            }
-        }
-    }
 
-    @Override
-    @Transactional
-    public void deleteBookImage(Long imageId) {
-        BookImage image = bookImageRepository.findById(imageId)
-                .orElseThrow(() -> new BadRequestException("Không tìm thấy ảnh."));
-        
-        // 1. Xóa file vật lý trên MinIO trước
-        if (image.getImageFileName() != null) {
-            minioService.deleteFile(image.getImageFileName());
-        }
-        
-        // 2. Xóa record trong Database
-        bookImageRepository.delete(image);
-    }
 }

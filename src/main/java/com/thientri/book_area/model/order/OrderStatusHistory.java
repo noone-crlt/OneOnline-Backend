@@ -26,18 +26,18 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class OrderStatusHistory {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @ManyToOne
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "status", length = 50)
-    private String status;
+	@ManyToOne
+	@JoinColumn(name = "order_id", nullable = false)
+	private Order order;
 
-    @CreationTimestamp
-    @Column(name = "changed_at", updatable = false)
-    private LocalDateTime changedAt;
+	@Column(name = "status", length = 50)
+	private String status;
+
+	@CreationTimestamp
+	@Column(name = "changed_at", updatable = false)
+	private LocalDateTime changedAt;
 }

@@ -153,6 +153,9 @@ export async function apiFetch(path, init = {}) {
 
     throw new ApiError(message, response.status, payload)
   }
+  if (payload && typeof payload === 'object' && payload.status === 'success' && 'data' in payload) {
+    return payload.data
+  }
 
   return payload
 }
@@ -271,6 +274,10 @@ export function createOrder(payload) {
     headers: authHeaders(),
     body: payload,
   })
+}
+
+export function getPaymentStatus(orderCode) {
+  return apiFetch(`/api/payments/${encodeURIComponent(orderCode)}/status`, { headers: authHeaders() })
 }
 
 export function getOrderHistory(page = 0, size = 10) {

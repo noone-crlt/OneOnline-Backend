@@ -26,28 +26,28 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class OrderItem {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+	@ManyToOne
+	@JoinColumn(name = "order_id", nullable = false)
+	private Order order;
 
-    // SỬA: Trỏ về Phiên bản sách (Edition), không trỏ về sách gốc
-    @ManyToOne
-    @JoinColumn(name = "edition_id", nullable = false)
-    private BookEdition edition;
+	// SỬA: Trỏ về Phiên bản sách (Edition), không trỏ về sách gốc
+	@ManyToOne
+	@JoinColumn(name = "edition_id", nullable = false)
+	private BookEdition edition;
 
-    @Column(name = "quantity", nullable = false)
-    @Builder.Default
-    private Integer quantity = 1;
+	@Column(name = "quantity", nullable = false)
+	@Builder.Default
+	private Integer quantity = 1;
 
-    // THÊM: Giá gốc để biết khách đã được giảm bao nhiêu
-    @Column(name = "original_price", precision = 18, scale = 0)
-    private BigDecimal originalPrice;
+	// THÊM: Giá gốc để biết khách đã được giảm bao nhiêu
+	@Column(name = "original_price", precision = 18, scale = 0)
+	private BigDecimal originalPrice;
 
-    // Giá chốt mua cuối cùng
-    @Column(name = "price", precision = 18, scale = 0, nullable = false)
-    private BigDecimal price;
+	// Giá chốt mua cuối cùng
+	@Column(name = "price", precision = 18, scale = 0, nullable = false)
+	private BigDecimal price;
 }

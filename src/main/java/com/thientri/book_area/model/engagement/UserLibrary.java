@@ -24,29 +24,31 @@ import lombok.Setter;
 
 @Entity
 // SỬA: Đảm bảo 1 user không thể sở hữu 2 lần cùng 1 phiên bản sách
-@Table(name = "user_library", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "edition_id"})
-})
+@Table(name = "user_library", uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "edition_id"})})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserLibrary {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
-    // Trỏ về Edition thay vì Book gốc
-    @ManyToOne
-    @JoinColumn(name = "edition_id", nullable = false)
-    private BookEdition edition;
+	// Trỏ về Edition thay vì Book gốc
+	@ManyToOne
+	@JoinColumn(name = "edition_id", nullable = false)
+	private BookEdition edition;
 
-    @CreationTimestamp
-    @Column(name = "acquired_at", updatable = false)
-    private LocalDateTime acquiredAt;
+	@Column(name = "progress")
+	@Builder.Default
+	private Integer progress = 0;
+
+	@CreationTimestamp
+	@Column(name = "acquired_at", updatable = false)
+	private LocalDateTime acquiredAt;
 }

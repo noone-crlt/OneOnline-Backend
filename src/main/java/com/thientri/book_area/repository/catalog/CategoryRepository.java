@@ -7,8 +7,8 @@ import com.thientri.book_area.model.catalog.Category;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
-    
-    // Đảm bảo không tạo trùng tên danh mục
-    Optional<Category> findByName(String name);
-    boolean existsByName(String name);
+
+	// Đảm bảo không tạo trùng tên danh mục
+	Optional<Category> findByName(String name);
+	boolean existsByName(String name);
 }

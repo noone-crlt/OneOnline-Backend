@@ -24,9 +24,7 @@ import lombok.Setter;
 
 @Entity
 // SỬA: Thêm UniqueConstraint chặn việc 1 user đánh giá 1 cuốn sách nhiều lần
-@Table(name = "reviews", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "book_id"})
-})
+@Table(name = "reviews", uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "book_id"})})
 // SỬA: Bổ sung Lombok
 @Getter
 @Setter
@@ -34,32 +32,32 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Review {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "book_id", nullable = false)
-    private Book book;
+	@ManyToOne
+	@JoinColumn(name = "book_id", nullable = false)
+	private Book book;
 
-    // Khoảng giá trị biên 1-5 được Database bảo vệ, Java cần đảm bảo không Null
-    @Column(name = "rating", nullable = false)
-    private Integer rating;
+	// Khoảng giá trị biên 1-5 được Database bảo vệ, Java cần đảm bảo không Null
+	@Column(name = "rating", nullable = false)
+	private Integer rating;
 
-    // SỬA: Đổi TEXT thành NVARCHAR(MAX)
-    @Column(name = "comment", columnDefinition = "NVARCHAR(MAX)")
-    private String comment;
+	// SỬA: Đổi TEXT thành NVARCHAR(MAX)
+	@Column(name = "comment", columnDefinition = "NVARCHAR(MAX)")
+	private String comment;
 
-    // THÊM MỚI: Cơ chế kiểm duyệt bình luận (Admin duyệt mới được hiện)
-    @Column(name = "is_approved")
-    @Builder.Default
-    private Boolean isApproved = false;
+	// THÊM MỚI: Cơ chế kiểm duyệt bình luận (Admin duyệt mới được hiện)
+	@Column(name = "is_approved")
+	@Builder.Default
+	private Boolean isApproved = false;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+	@CreationTimestamp
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 }

@@ -13,7 +13,7 @@ import com.thientri.book_area.model.audio.Narrator;
 import com.thientri.book_area.model.catalog.Author;
 import com.thientri.book_area.model.catalog.Book;
 import com.thientri.book_area.model.catalog.BookEdition;
-import com.thientri.book_area.model.catalog.BookImage;
+
 import com.thientri.book_area.model.catalog.Category;
 import com.thientri.book_area.service.minio.MinioService;
 
@@ -49,9 +49,6 @@ public class CatalogMapper {
                         
                 .authorNames(book.getAuthors() == null ? Collections.emptyList() : 
                         book.getAuthors().stream().map(Author::getName).collect(Collectors.toList()))
-                        
-                .imageUrls(book.getImages() == null ? Collections.emptyList() : 
-                        book.getImages().stream().map(BookImage::getImageFileName).collect(Collectors.toList()))
                         
                 // Mapping danh sách các phiên bản (Variants)
                 .editions(book.getEditions() == null ? Collections.emptyList() : 

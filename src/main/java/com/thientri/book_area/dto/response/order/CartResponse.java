@@ -8,8 +8,8 @@ import lombok.Data;
 @Data
 @Builder
 public class CartResponse {
-    private Long cartId;
-    private List<CartItemResponse> items;
-    private Integer totalItems;
-    private BigDecimal cartTotalAmount; // Tổng tiền giỏ hàng (chưa tính phí ship/khuyến mãi)
+	private Long cartId;
+	private List<CartItemResponse> items;
+	private Integer totalItems;
+	private BigDecimal cartTotalAmount; // Tổng tiền giỏ hàng (chưa tính phí ship/khuyến mãi)
 }

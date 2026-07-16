@@ -24,26 +24,26 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class EditionAudioChapter {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "edition_id", nullable = false)
-    private BookEdition edition;
+	@ManyToOne
+	@JoinColumn(name = "edition_id", nullable = false)
+	private BookEdition edition;
 
-    @Column(name = "title", length = 255)
-    private String title;
+	@Column(name = "title", length = 255)
+	private String title;
 
-    // THÊM MỚI: Bắt buộc có số chương để sắp xếp playlist
-    @Column(name = "chapter_number", nullable = false)
-    private Integer chapterNumber;
+	// THÊM MỚI: Bắt buộc có số chương để sắp xếp playlist
+	@Column(name = "chapter_number", nullable = false)
+	private Integer chapterNumber;
 
-    // Bắt buộc dùng NVARCHAR(MAX) cho đường dẫn file âm thanh
-    @Column(name = "audio_file_name", columnDefinition = "NVARCHAR(MAX)")
-    private String audioFileName;
+	// Bắt buộc dùng NVARCHAR(MAX) cho đường dẫn file âm thanh
+	@Column(name = "audio_file_name", columnDefinition = "NVARCHAR(MAX)")
+	private String audioFileName;
 
-    // Thời lượng tính bằng giây
-    @Column(name = "duration")
-    private Integer duration;
+	// Thời lượng tính bằng giây
+	@Column(name = "duration")
+	private Integer duration;
 }

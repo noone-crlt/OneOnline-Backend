@@ -15,40 +15,37 @@ import com.thientri.book_area.repository.user.UserRepository;
 @Service
 public class RefreshTokenService {
 
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final UserRepository userRepository;
+	private final RefreshTokenRepository refreshTokenRepository;
+	private final UserRepository userRepository;
 
-    public RefreshTokenService(RefreshTokenRepository refreshTokenRepository, UserRepository userRepository) {
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.userRepository = userRepository;
-    }
+	public RefreshTokenService(RefreshTokenRepository refreshTokenRepository, UserRepository userRepository) {
+		this.refreshTokenRepository = refreshTokenRepository;
+		this.userRepository = userRepository;
+	}
 
-    // Tạo RefreshToken để người dùng có thể duy trì đăng nhập trong 7 ngày
-    @Transactional
-    public RefreshToken createRefreshToken(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Khong tim thay nguoi dung de tao RefreshToken!"));
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .refreshToken(UUID.randomUUID().toString())
-                .expiryDate(LocalDateTime.now().plusDays(7))
-                .build();
-        refreshTokenRepository.save(refreshToken);
-        return refreshToken;
-    }
+	// Tạo RefreshToken để người dùng có thể duy trì đăng nhập trong 7 ngày
+	@Transactional
+	public RefreshToken createRefreshToken(String email) {
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new RuntimeException("Khong tim thay nguoi dung de tao RefreshToken!"));
+		RefreshToken refreshToken = RefreshToken.builder().user(user).refreshToken(UUID.randomUUID().toString())
+				.expiryDate(LocalDateTime.now().plusDays(7)).build();
+		refreshTokenRepository.save(refreshToken);
+		return refreshToken;
+	}
 
-    // Kiểm tra RefreshToken có còn hạn sử dụng 7 hay không
-    @Transactional
-    public RefreshToken verifyExpiration(RefreshToken refreshToken) {
-        if (refreshToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.deleteById(refreshToken.getId());
-            throw new RuntimeException("Phien ban dang nhap tren thiet bi da het han, vui long dang nhap lai!");
-        }
-        return refreshToken;
-    }
+	// Kiểm tra RefreshToken có còn hạn sử dụng 7 hay không
+	@Transactional
+	public RefreshToken verifyExpiration(RefreshToken refreshToken) {
+		if (refreshToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+			refreshTokenRepository.deleteById(refreshToken.getId());
+			throw new RuntimeException("Phien ban dang nhap tren thiet bi da het han, vui long dang nhap lai!");
+		}
+		return refreshToken;
+	}
 
-    @Transactional(readOnly = true)
-    public Optional<RefreshToken> findByToken(String token) {
-        return refreshTokenRepository.findByRefreshToken(token);
-    }
+	@Transactional(readOnly = true)
+	public Optional<RefreshToken> findByToken(String token) {
+		return refreshTokenRepository.findByRefreshToken(token);
+	}
 }

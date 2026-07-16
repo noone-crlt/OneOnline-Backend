@@ -27,28 +27,28 @@ import lombok.Setter;
 @Builder
 public class RefreshToken {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "expiry_date", updatable = false)
-    private LocalDateTime expiryDate;
+	@Column(name = "expiry_date", updatable = false)
+	private LocalDateTime expiryDate;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
-    // SỬA: Bổ sung unique = true để chống lưu trùng token
-    @Column(name = "refresh_token", length = 255, nullable = false, unique = true)
-    private String refreshToken;
+	// SỬA: Bổ sung unique = true để chống lưu trùng token
+	@Column(name = "refresh_token", length = 255, nullable = false, unique = true)
+	private String refreshToken;
 
-    // THÊM MỚI: Dấu vết thời gian tạo
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-    
-    // THÊM MỚI: Dùng Boolean chuẩn chỉnh thay vì String
-    @Column(name = "revoked")
-    @Builder.Default
-    private Boolean revoked = false;
+	// THÊM MỚI: Dấu vết thời gian tạo
+	@CreationTimestamp
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
+
+	// THÊM MỚI: Dùng Boolean chuẩn chỉnh thay vì String
+	@Column(name = "revoked")
+	@Builder.Default
+	private Boolean revoked = false;
 }

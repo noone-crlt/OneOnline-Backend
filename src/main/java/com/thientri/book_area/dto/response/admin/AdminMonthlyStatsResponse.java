@@ -12,9 +12,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class AdminMonthlyStatsResponse {
-    private String month;
-    private long newUsers;
-    private long newBooks;
-    private long comments;
-    private java.math.BigDecimal revenue;
+	private String month;
+	private long newUsers;
+	private long newBooks;
+	private long comments;
+	private java.math.BigDecimal revenue;
 }

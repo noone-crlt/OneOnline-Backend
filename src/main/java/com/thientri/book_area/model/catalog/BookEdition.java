@@ -36,60 +36,56 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class BookEdition {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "book_id", nullable = false)
-    private Book book;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    // 'PHYSICAL', 'EBOOK_PDF', 'EBOOK_EPUB', 'AUDIOBOOK'
-    @Column(name = "format", length = 50, nullable = false)
-    private String format;
+	@ManyToOne
+	@JoinColumn(name = "book_id", nullable = false)
+	private Book book;
 
-    @Column(name = "sku_code", length = 100, unique = true)
-    private String skuCode;
+	// 'PHYSICAL', 'EBOOK_PDF', 'EBOOK_EPUB', 'AUDIOBOOK'
+	@Column(name = "format", length = 50, nullable = false)
+	private String format;
 
-    @Column(name = "original_price", precision = 18, scale = 0)
-    private BigDecimal originalPrice;
+	@Column(name = "sku_code", length = 100, unique = true)
+	private String skuCode;
 
-    @Column(name = "sale_price", precision = 18, scale = 0, nullable = false)
-    private BigDecimal salePrice;
+	@Column(name = "original_price", precision = 18, scale = 0)
+	private BigDecimal originalPrice;
 
-    @Column(name = "stock")
-    private Integer stock;
+	@Column(name = "sale_price", precision = 18, scale = 0, nullable = false)
+	private BigDecimal salePrice;
 
-    @Column(name = "is_active")
-    @Builder.Default
-    private Boolean isActive = true;
+	@Column(name = "stock")
+	private Integer stock;
 
-    @Column(name = "cover_object_name", length = 500)
-    private String coverObjectName;
+	@Column(name = "is_active")
+	@Builder.Default
+	private Boolean isActive = true;
 
-    @Column(name = "file_object_name", length = 500)
-    private String fileObjectName;
+	@Column(name = "cover_object_name", length = 500)
+	private String coverObjectName;
 
-    @Column(name = "duration")
-    private Integer duration;
+	@Column(name = "file_object_name", length = 500)
+	private String fileObjectName;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+	@Column(name = "duration")
+	private Integer duration;
 
-    // Thêm vào bên trong class BookEdition.java
-    @ManyToMany
-    @JoinTable(
-        name = "edition_narrators", 
-        joinColumns = @JoinColumn(name = "edition_id"), 
-        inverseJoinColumns = @JoinColumn(name = "narrator_id")
-    )
-    @Builder.Default
-    private Set<Narrator> narrators = new HashSet<>();
+	@CreationTimestamp
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-    // THÊM MỚI: Liên kết 1 Phiên bản với nhiều Chương sách nói
-    @OneToMany(mappedBy = "edition", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<EditionAudioChapter> audioChapters = new java.util.ArrayList<>();
+	// Thêm vào bên trong class BookEdition.java
+	@ManyToMany
+	@JoinTable(name = "edition_narrators", joinColumns = @JoinColumn(name = "edition_id"), inverseJoinColumns = @JoinColumn(name = "narrator_id"))
+	@Builder.Default
+	private Set<Narrator> narrators = new HashSet<>();
+
+	// THÊM MỚI: Liên kết 1 Phiên bản với nhiều Chương sách nói
+	@OneToMany(mappedBy = "edition", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+	@Builder.Default
+	private List<EditionAudioChapter> audioChapters = new java.util.ArrayList<>();
 }

@@ -11,11 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @Transactional(readOnly = true)
 class AdminDashboardIntegrationTest {
-    @Autowired private AdminDashboardService dashboardService;
+	@Autowired
+	private AdminDashboardService dashboardService;
 
-    @Test
-    void dashboardQueriesExecuteAgainstConfiguredDatabase() {
-        assertNotNull(dashboardService.getSummary());
-        assertEquals(6, dashboardService.getChartStats("monthly").size());
-    }
+	@Test
+	void dashboardQueriesExecuteAgainstConfiguredDatabase() {
+		assertNotNull(dashboardService.getSummary());
+		assertEquals(6, dashboardService.getChartStats("monthly").size());
+	}
 }

@@ -20,11 +20,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Author {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    // Bắt buộc phải có tên
-    @Column(name = "name", length = 255, nullable = false)
-    private String name;
+	// Bắt buộc phải có tên
+	@Column(name = "name", length = 255, nullable = false)
+	private String name;
 }

@@ -1,5 +1,7 @@
 package com.thientri.book_area.controller.auth;
 
+import com.thientri.book_area.dto.response.ApiResponse;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -28,39 +30,38 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final IAuthService authService;
+	private final IAuthService authService;
 
-    @PostMapping("/register")
-    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ResponseEntity.ok("Đăng ký tài khoản thành công!");
-    }
+	@PostMapping("/register")
+	public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
+		authService.register(request);
+		return ResponseEntity.ok(ApiResponse.success("Đăng ký tài khoản thành công!", null));
+	}
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
-    }
+	@PostMapping("/login")
+	public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+		AuthResponse response = authService.login(request);
+		return ResponseEntity.ok(ApiResponse.success(response));
+	}
 
-    @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(profileResponse(user));
-    }
+	@GetMapping("/me")
+	public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentUser(@AuthenticationPrincipal User user) {
+		return ResponseEntity.ok(ApiResponse.success(profileResponse(user)));
+	}
 
-    @PatchMapping("/me")
-    public ResponseEntity<Map<String, Object>> updateProfile(
-            @AuthenticationPrincipal User user,
-            @Valid @RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(profileResponse(authService.updateProfile(user, request)));
-    }
+	@PatchMapping("/me")
+	public ResponseEntity<ApiResponse<Map<String, Object>>> updateProfile(@AuthenticationPrincipal User user,
+			@Valid @RequestBody UpdateProfileRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(profileResponse(authService.updateProfile(user, request))));
+	}
 
-    private Map<String, Object> profileResponse(User user) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("id", user.getId());
-        response.put("email", user.getEmail());
-        response.put("fullName", user.getFullName());
-        response.put("phone", user.getPhone());
-        response.put("roles", user.getRoles().stream().map(Role::getName).toList());
-        return response;
-    }
+	private Map<String, Object> profileResponse(User user) {
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("id", user.getId());
+		response.put("email", user.getEmail());
+		response.put("fullName", user.getFullName());
+		response.put("phone", user.getPhone());
+		response.put("roles", user.getRoles().stream().map(Role::getName).toList());
+		return response;
+	}
 }

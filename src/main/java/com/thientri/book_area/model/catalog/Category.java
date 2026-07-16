@@ -20,11 +20,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Category {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    // Bắt buộc phải có tên và không được trùng lặp danh mục
-    @Column(name = "name", length = 255, nullable = false, unique = true)
-    private String name;
+	// Bắt buộc phải có tên và không được trùng lặp danh mục
+	@Column(name = "name", length = 255, nullable = false, unique = true)
+	private String name;
 }

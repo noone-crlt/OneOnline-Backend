@@ -11,20 +11,20 @@ import com.thientri.book_area.model.payment.PaymentStatus;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
-    // Tìm giao dịch bằng mã của ngân hàng/MoMo trả về
-    Optional<Payment> findByTransactionId(String transactionId);
-    
-    // Tìm chứng từ thanh toán của một đơn hàng cụ thể
-    Optional<Payment> findByOrderId(Long orderId);
+	// Tìm giao dịch bằng mã của ngân hàng/MoMo trả về
+	Optional<Payment> findByTransactionId(String transactionId);
 
-    Optional<Payment> findByOrderOrderCode(String orderCode);
+	// Tìm chứng từ thanh toán của một đơn hàng cụ thể
+	Optional<Payment> findByOrderId(Long orderId);
 
-    @Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status")
-    BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);
+	Optional<Payment> findByOrderOrderCode(String orderCode);
 
-    @Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status and p.paidAt >= :start and p.paidAt < :end")
-    BigDecimal sumAmountByStatusBetween(
-            @Param("status") PaymentStatus status,
-            @Param("start") java.time.LocalDateTime start,
-            @Param("end") java.time.LocalDateTime end);
+	Optional<Payment> findByOrderOrderCodeAndOrderUserId(String orderCode, Long userId);
+
+	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status")
+	BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);
+
+	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status and p.paidAt >= :start and p.paidAt < :end")
+	BigDecimal sumAmountByStatusBetween(@Param("status") PaymentStatus status,
+			@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
 }

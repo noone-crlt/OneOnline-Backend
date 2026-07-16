@@ -12,7 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.thientri.book_area.model.order.Cart;
+import com.thientri.book_area.model.order.CartItem;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -27,7 +27,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,103 +43,82 @@ import lombok.Setter;
 @Builder
 public class User implements UserDetails {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "email", length = 255, nullable = false, unique = true)
-    private String email;
+	@Column(name = "email", length = 255, nullable = false, unique = true)
+	private String email;
 
-    @Column(name = "password", length = 255, nullable = false)
-    private String password;
+	@Column(name = "password", length = 255, nullable = false)
+	private String password;
 
-    @Column(name = "full_name", length = 255)
-    private String fullName;
+	@Column(name = "full_name", length = 255)
+	private String fullName;
 
-    @Column(name = "phone", length = 20)
-    private String phone;
+	@Column(name = "phone", length = 20)
+	private String phone;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+	@CreationTimestamp
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 
-    // Map chính xác cột status với Enum, báo cho JPA biết để lưu dưới dạng chuỗi (String)
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20)
-    @Builder.Default
-    private UserStatus status = UserStatus.ACTIVE;
+	// Map chính xác cột status với Enum, báo cho JPA biết để lưu dưới dạng chuỗi
+	// (String)
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", length = 20)
+	@Builder.Default
+	private UserStatus status = UserStatus.ACTIVE;
 
-    @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "user_roles",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    private Set<Role> roles = new HashSet<>();
+	@Builder.Default
+	@ManyToMany(fetch = FetchType.EAGER)
+	@JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
+	private Set<Role> roles = new HashSet<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "user")
-    private List<Address> addresses = new ArrayList<>();
+	@Builder.Default
+	@OneToMany(mappedBy = "user")
+	private List<Address> addresses = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "user")
-    private List<RefreshToken> refreshTokens = new ArrayList<>();
+	@Builder.Default
+	@OneToMany(mappedBy = "user")
+	private List<RefreshToken> refreshTokens = new ArrayList<>();
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Cart cart;
+	@Builder.Default
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<CartItem> cartItems = new ArrayList<>();
 
-    public void setCart(Cart cart) {
-        if (cart == null) { 
-            if (this.cart != null) {    
-                this.cart.setUser(null);
-            }
-        } else {
-            cart.setUser(this);
-        }
-        this.cart = cart;
-    }
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		return roles.stream().map(role -> new SimpleGrantedAuthority(role.getName())).toList();
+	}
 
-    public void initCart() {
-        if (this.cart == null) {
-            Cart newCart = new Cart();
-            setCart(newCart);
-        }
-    }
+	@Override
+	public String getUsername() {
+		return getEmail();
+	}
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .toList();
-    }
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
 
-    @Override
-    public String getUsername() {
-        return getEmail();
-    }
+	@Override
+	public boolean isAccountNonLocked() {
+		// Tài khoản bị khóa (BANNED) sẽ không thể đăng nhập
+		return this.status != UserStatus.BANNED;
+	}
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+	@Override
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
 
-    @Override
-    public boolean isAccountNonLocked() {
-        // Tài khoản bị khóa (BANNED) sẽ không thể đăng nhập
-        return this.status != UserStatus.BANNED;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        // Chỉ tài khoản ACTIVE hoặc INACTIVE mới được coi là tồn tại, DELETED thì chặn hoàn toàn
-        return this.status != UserStatus.DELETED;
-    }
+	@Override
+	public boolean isEnabled() {
+		// Chỉ tài khoản ACTIVE hoặc INACTIVE mới được coi là tồn tại, DELETED thì chặn
+		// hoàn toàn
+		return this.status != UserStatus.DELETED;
+	}
 }

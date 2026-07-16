@@ -1,6 +1,7 @@
 package com.thientri.book_area.model.order;
 
 import com.thientri.book_area.model.catalog.BookEdition;
+import com.thientri.book_area.model.user.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,20 +25,20 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class CartItem {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "cart_id", nullable = false)
-    private Cart cart;
+	@ManyToOne
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
-    // SỬA LỖI KIẾN TRÚC: Trỏ về Edition, không trỏ về Book
-    @ManyToOne
-    @JoinColumn(name = "edition_id", nullable = false)
-    private BookEdition edition;
+	// SỬA LỖI KIẾN TRÚC: Trỏ về Edition, không trỏ về Book
+	@ManyToOne
+	@JoinColumn(name = "edition_id", nullable = false)
+	private BookEdition edition;
 
-    @Column(name = "quantity", nullable = false)
-    @Builder.Default
-    private Integer quantity = 1;
+	@Column(name = "quantity", nullable = false)
+	@Builder.Default
+	private Integer quantity = 1;
 }

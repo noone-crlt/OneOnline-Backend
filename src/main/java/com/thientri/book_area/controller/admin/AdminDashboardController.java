@@ -14,19 +14,22 @@ import com.thientri.book_area.service.admin.AdminDashboardService;
 
 import lombok.RequiredArgsConstructor;
 
+import com.thientri.book_area.dto.response.ApiResponse;
+
 @RestController
 @RequestMapping("/api/admin/dashboard")
 @RequiredArgsConstructor
 public class AdminDashboardController {
-    private final AdminDashboardService dashboardService;
+	private final AdminDashboardService dashboardService;
 
-    @GetMapping("/summary")
-    public ResponseEntity<AdminDashboardSummaryResponse> getSummary() {
-        return ResponseEntity.ok(dashboardService.getSummary());
-    }
+	@GetMapping("/summary")
+	public ResponseEntity<ApiResponse<AdminDashboardSummaryResponse>> getSummary() {
+		return ResponseEntity.ok(ApiResponse.success(dashboardService.getSummary()));
+	}
 
-    @GetMapping("/monthly-stats")
-    public ResponseEntity<List<AdminMonthlyStatsResponse>> getMonthlyStats(@RequestParam(defaultValue = "monthly") String granularity) {
-        return ResponseEntity.ok(dashboardService.getChartStats(granularity));
-    }
+	@GetMapping("/monthly-stats")
+	public ResponseEntity<ApiResponse<List<AdminMonthlyStatsResponse>>> getMonthlyStats(
+			@RequestParam(defaultValue = "monthly") String granularity) {
+		return ResponseEntity.ok(ApiResponse.success(dashboardService.getChartStats(granularity)));
+	}
 }

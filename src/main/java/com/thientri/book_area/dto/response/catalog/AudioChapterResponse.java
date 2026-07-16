@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AudioChapterResponse {
-    private Long id;
-    private Integer chapterNumber;
-    private String title;
-    private String audioFileName;
-    private Integer duration;
+	private Long id;
+	private Integer chapterNumber;
+	private String title;
+	private String audioFileName;
+	private Integer duration;
 }

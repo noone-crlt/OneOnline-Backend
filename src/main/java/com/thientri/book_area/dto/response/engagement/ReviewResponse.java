@@ -7,9 +7,9 @@ import lombok.Data;
 @Data
 @Builder
 public class ReviewResponse {
-    private Long id;
-    private String reviewerName; // Giấu email và ID của người đánh giá
-    private Integer rating;
-    private String comment;
-    private LocalDateTime createdAt;
+	private Long id;
+	private String reviewerName; // Giấu email và ID của người đánh giá
+	private Integer rating;
+	private String comment;
+	private LocalDateTime createdAt;
 }

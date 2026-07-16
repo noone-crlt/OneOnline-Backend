@@ -9,17 +9,12 @@ import com.thientri.book_area.model.user.User;
 @Component
 public class UserMapper {
 
-    public AuthResponse toAuthResponse(User user, String accessToken, String refreshToken) {
-        if (user == null) return null;
+	public AuthResponse toAuthResponse(User user, String accessToken, String refreshToken) {
+		if (user == null)
+			return null;
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .userId(user.getId())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toList()))
-                .build();
-    }
+		return AuthResponse.builder().accessToken(accessToken).refreshToken(refreshToken).userId(user.getId())
+				.email(user.getEmail()).fullName(user.getFullName()).phone(user.getPhone())
+				.roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toList())).build();
+	}
 }

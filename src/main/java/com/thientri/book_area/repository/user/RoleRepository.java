@@ -7,7 +7,7 @@ import com.thientri.book_area.model.user.Role;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
-    
-    // Tìm quyền theo tên (Ví dụ: "ROLE_USER") để gán cho tài khoản mới
-    Optional<Role> findByName(String name);
+
+	// Tìm quyền theo tên (Ví dụ: "ROLE_USER") để gán cho tài khoản mới
+	Optional<Role> findByName(String name);
 }

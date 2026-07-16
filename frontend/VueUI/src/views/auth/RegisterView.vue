@@ -319,6 +319,8 @@ async function handleSubmit() {
 }
 
 .form-group input {
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.875rem 1rem;
   border: 1px solid #d1d5db; /* gray-300 */
   border-radius: 0.75rem;

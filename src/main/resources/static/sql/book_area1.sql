@@ -717,7 +717,7 @@ INSERT INTO payment_methods (name, description) VALUES
 ('BANK', N'Chuyển khoản ngân hàng'),
 ('MOMO', N'Ví MoMo'),
 ('ZALO', N'ZaloPay'),
-('VNPAY', N'VNPay'),
+('SEPAY', N'Chuyển khoản QR qua SePay'),
 ('PAYPAL', N'PayPal'),
 ('CARD', N'Thẻ ngân hàng'),
 ('APPLEPAY', N'Apple Pay'),

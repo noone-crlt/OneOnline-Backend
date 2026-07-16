@@ -1,5 +1,7 @@
 package com.thientri.book_area.controller.order;
 
+import com.thientri.book_area.dto.response.ApiResponse;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,27 +26,28 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
 public class CartController {
-    private final CartService cartService;
+	private final CartService cartService;
 
-    @GetMapping
-    public ResponseEntity<CartResponse> getCart(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(cartService.getCart(user));
-    }
+	@GetMapping
+	public ResponseEntity<ApiResponse<CartResponse>> getCart(@AuthenticationPrincipal User user) {
+		return ResponseEntity.ok(ApiResponse.success(cartService.getCart(user)));
+	}
 
-    @PostMapping("/items")
-    public ResponseEntity<CartResponse> addItem(@AuthenticationPrincipal User user,
-            @Valid @RequestBody AddToCartRequest request) {
-        return ResponseEntity.ok(cartService.addItem(user, request));
-    }
+	@PostMapping("/items")
+	public ResponseEntity<ApiResponse<CartResponse>> addItem(@AuthenticationPrincipal User user,
+			@Valid @RequestBody AddToCartRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(cartService.addItem(user, request)));
+	}
 
-    @PutMapping("/items/{itemId}")
-    public ResponseEntity<CartResponse> updateItem(@AuthenticationPrincipal User user,
-            @PathVariable Long itemId, @Valid @RequestBody UpdateCartItemRequest request) {
-        return ResponseEntity.ok(cartService.updateItem(user, itemId, request.getQuantity()));
-    }
+	@PutMapping("/items/{itemId}")
+	public ResponseEntity<ApiResponse<CartResponse>> updateItem(@AuthenticationPrincipal User user,
+			@PathVariable Long itemId, @Valid @RequestBody UpdateCartItemRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(cartService.updateItem(user, itemId, request.getQuantity())));
+	}
 
-    @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<CartResponse> removeItem(@AuthenticationPrincipal User user, @PathVariable Long itemId) {
-        return ResponseEntity.ok(cartService.removeItem(user, itemId));
-    }
+	@DeleteMapping("/items/{itemId}")
+	public ResponseEntity<ApiResponse<CartResponse>> removeItem(@AuthenticationPrincipal User user,
+			@PathVariable Long itemId) {
+		return ResponseEntity.ok(ApiResponse.success(cartService.removeItem(user, itemId)));
+	}
 }

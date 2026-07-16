@@ -12,16 +12,16 @@ import com.thientri.book_area.model.engagement.Review;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
-    // Chỉ lấy các review đã được duyệt để hiển thị cho Frontend
-    Page<Review> findByBookIdAndIsApprovedTrueOrderByCreatedAtDesc(Long bookId, Pageable pageable);
-    
-    // Kiểm tra user đã review sách này chưa
-    Optional<Review> findByUserIdAndBookId(Long userId, Long bookId);
+	// Chỉ lấy các review đã được duyệt để hiển thị cho Frontend
+	Page<Review> findByBookIdAndIsApprovedTrueOrderByCreatedAtDesc(Long bookId, Pageable pageable);
 
-    @Query("select count(r) from Review r where r.comment is not null and trim(r.comment) <> ''")
-    long countComments();
+	// Kiểm tra user đã review sách này chưa
+	Optional<Review> findByUserIdAndBookId(Long userId, Long bookId);
 
-    @Query("select count(r) from Review r where r.comment is not null and trim(r.comment) <> '' "
-            + "and r.createdAt >= :start and r.createdAt < :end")
-    long countCommentsBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+	@Query("select count(r) from Review r where r.comment is not null and trim(r.comment) <> ''")
+	long countComments();
+
+	@Query("select count(r) from Review r where r.comment is not null and trim(r.comment) <> '' "
+			+ "and r.createdAt >= :start and r.createdAt < :end")
+	long countCommentsBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

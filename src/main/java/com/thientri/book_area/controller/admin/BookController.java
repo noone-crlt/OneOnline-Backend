@@ -1,5 +1,7 @@
 package com.thientri.book_area.controller.admin;
 
+import com.thientri.book_area.dto.response.ApiResponse;
+
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -34,70 +36,50 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BookController {
 
-    private final IBookService bookService;
+	private final IBookService bookService;
 
-    // ==========================================
-    // API PUBLIC (Frontend hiển thị)
-    // ==========================================
+	// ==========================================
+	// API PUBLIC (Frontend hiển thị)
+	// ==========================================
 
-    @GetMapping
-    public ResponseEntity<Page<BookDetailResponse>> getAllBooks(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        // Mặc định sắp xếp sách mới nhất lên đầu
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ResponseEntity.ok(bookService.getAllBooks(pageable));
-    }
+	@GetMapping
+	public ResponseEntity<ApiResponse<Page<BookDetailResponse>>> getAllBooks(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		// Mặc định sắp xếp sách mới nhất lên đầu
+		Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+		return ResponseEntity.ok(ApiResponse.success(bookService.getAllBooks(pageable)));
+	}
 
-    @GetMapping("/{slug}")
-    public ResponseEntity<BookDetailResponse> getBookDetail(@PathVariable String slug) {
-        return ResponseEntity.ok(bookService.getBookDetailBySlug(slug));
-    }
+	@GetMapping("/{slug}")
+	public ResponseEntity<ApiResponse<BookDetailResponse>> getBookDetail(@PathVariable String slug) {
+		return ResponseEntity.ok(ApiResponse.success(bookService.getBookDetailBySlug(slug)));
+	}
 
-    // ==========================================
-    // API ADMIN (Quản lý dữ liệu)
-    // ==========================================
+	// ==========================================
+	// API ADMIN (Quản lý dữ liệu)
+	// ==========================================
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> createBook(
-            @Valid @RequestPart("data") BookCreateRequest request,
-            @RequestPart(value = "images", required = false) List<MultipartFile> imageFiles) {
+	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ApiResponse<Void>> createBook(@Valid @RequestPart("data") BookCreateRequest request,
+			@RequestPart(value = "images", required = false) List<MultipartFile> imageFiles) {
 
-        bookService.createBook(request, imageFiles);
-        return ResponseEntity.ok("Tạo sách thành công!");
-    }
+		bookService.createBook(request, imageFiles);
+		return ResponseEntity.ok(ApiResponse.success("Tạo sách thành công!", null));
+	}
 
-    @PutMapping("/{id}")
-    public ResponseEntity<String> updateBook(
-            @PathVariable Long id,
-            @Valid @RequestBody BookUpdateRequest request) {
+	@PutMapping("/{id}")
+	public ResponseEntity<ApiResponse<Void>> updateBook(@PathVariable Long id,
+			@Valid @RequestBody BookUpdateRequest request) {
 
-        bookService.updateBook(id, request);
-        return ResponseEntity.ok("Cập nhật sách thành công!");
-    }
+		bookService.updateBook(id, request);
+		return ResponseEntity.ok(ApiResponse.success("Cập nhật sách thành công!", null));
+	}
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<String> toggleStatus(
-            @PathVariable Long id,
-            @RequestParam boolean isActive) {
+	@PatchMapping("/{id}/status")
+	public ResponseEntity<ApiResponse<Void>> toggleStatus(@PathVariable Long id, @RequestParam boolean isActive) {
 
-        bookService.toggleBookActiveStatus(id, isActive);
-        return ResponseEntity.ok("Đã thay đổi trạng thái kinh doanh của sách!");
-    }
+		bookService.toggleBookActiveStatus(id, isActive);
+		return ResponseEntity.ok(ApiResponse.success("Đã thay đổi trạng thái kinh doanh của sách!", null));
+	}
 
-    // Quản lý hình ảnh độc lập
-    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> addBookImages(
-            @PathVariable Long id,
-            @RequestPart("images") List<MultipartFile> imageFiles) {
-
-        bookService.addBookImages(id, imageFiles);
-        return ResponseEntity.ok("Thêm ảnh thành công!");
-    }
-
-    @DeleteMapping("/images/{imageId}")
-    public ResponseEntity<String> deleteBookImage(@PathVariable Long imageId) {
-        bookService.deleteBookImage(imageId);
-        return ResponseEntity.ok("Xóa ảnh thành công!");
-    }
 }

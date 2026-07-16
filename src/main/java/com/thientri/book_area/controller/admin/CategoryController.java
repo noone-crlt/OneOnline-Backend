@@ -12,15 +12,17 @@ import com.thientri.book_area.repository.catalog.CategoryRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import com.thientri.book_area.dto.response.ApiResponse;
+
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 
-    private final CategoryRepository categoryRepository;
+	private final CategoryRepository categoryRepository;
 
-    @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryRepository.findAll());
-    }
+	@GetMapping
+	public ResponseEntity<ApiResponse<List<Category>>> getAllCategories() {
+		return ResponseEntity.ok(ApiResponse.success(categoryRepository.findAll()));
+	}
 }

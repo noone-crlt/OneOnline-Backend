@@ -14,11 +14,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class AdminDashboardSummaryResponse {
-    private long totalUsers;
-    private long totalBooks;
-    private long totalCategories;
-    private long totalAuthors;
-    private long totalChapters;
-    private long totalComments;
-    private BigDecimal totalRevenue;
+	private long totalUsers;
+	private long totalBooks;
+	private long totalCategories;
+	private long totalAuthors;
+	private long totalChapters;
+	private long totalComments;
+	private BigDecimal totalRevenue;
 }

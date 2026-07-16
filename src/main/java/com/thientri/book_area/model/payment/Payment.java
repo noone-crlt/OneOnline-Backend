@@ -29,35 +29,34 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class Payment {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+	@ManyToOne
+	@JoinColumn(name = "order_id", nullable = false)
+	private Order order;
 
-    @ManyToOne
-    @JoinColumn(name = "payment_method_id", nullable = false)
-    private PaymentMethod paymentMethod;
+	@Column(name = "payment_method", length = 50, nullable = false)
+	private String paymentMethod;
 
-    @Column(name = "amount", precision = 18, scale = 0, nullable = false)
-    private BigDecimal amount;
+	@Column(name = "amount", precision = 18, scale = 0, nullable = false)
+	private BigDecimal amount;
 
-    // SỬA: Ép kiểu Enum an toàn tuyệt đối
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 50, nullable = false)
-    @Builder.Default
-    private PaymentStatus status = PaymentStatus.PENDING;
+	// SỬA: Ép kiểu Enum an toàn tuyệt đối
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", length = 50, nullable = false)
+	@Builder.Default
+	private PaymentStatus status = PaymentStatus.PENDING;
 
-    // THÊM MỚI: Cực kỳ quan trọng để đối soát với VNPay/MoMo
-    @Column(name = "transaction_id", length = 255)
-    private String transactionId;
+	// Mã giao dịch duy nhất dùng để đối soát với nhà cung cấp thanh toán.
+	@Column(name = "transaction_id", length = 255, unique = true)
+	private String transactionId;
 
-    // THÊM MỚI: Lưu log JSON phản hồi từ cổng thanh toán (để debug khi có lỗi)
-    @Column(name = "gateway_response", columnDefinition = "NVARCHAR(MAX)")
-    private String gatewayResponse;
+	// THÊM MỚI: Lưu log JSON phản hồi từ cổng thanh toán (để debug khi có lỗi)
+	@Column(name = "gateway_response", columnDefinition = "NVARCHAR(MAX)")
+	private String gatewayResponse;
 
-    @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+	@Column(name = "paid_at")
+	private LocalDateTime paidAt;
 }

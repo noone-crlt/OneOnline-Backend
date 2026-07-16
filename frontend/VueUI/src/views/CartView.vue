@@ -32,7 +32,7 @@ async function load() {
     updateCartItemCount(cart.value?.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0)
     options.value = checkoutData
     addressId.value = checkoutData.addresses.find(item => item.isDefault)?.id ?? checkoutData.addresses[0]?.id ?? null
-    paymentMethodId.value = checkoutData.paymentMethods.find(item => item.name.toLowerCase() === 'vnpay')?.id
+    paymentMethodId.value = checkoutData.paymentMethods.find(item => item.name.toLowerCase() === 'sepay')?.id
       ?? checkoutData.paymentMethods[0]?.id ?? null
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Không thể tải giỏ hàng.'
@@ -72,11 +72,10 @@ async function checkout() {
   try {
     const result = await createOrder({
       addressId: requiresShippingAddress.value ? addressId.value : null,
-      paymentMethodId: paymentMethodId.value,
+      paymentMethod: paymentMethodId.value,
       couponCode: couponCode.value.trim() || null,
     })
-    if (result.paymentUrl) window.location.assign(result.paymentUrl)
-    else router.push({ name: 'payment-result', query: { status: 'pending', orderCode: result.orderCode } })
+    router.push({ name: 'payment-result', query: { status: result.paymentStatus?.toLowerCase() || 'pending', orderCode: result.orderCode } })
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Không thể tạo đơn hàng.'
   } finally {

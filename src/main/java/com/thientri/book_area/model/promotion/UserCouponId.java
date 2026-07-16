@@ -16,26 +16,26 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserCouponId implements Serializable {
-    @Column(name = "user_id")
-    private Long userId;
+	@Column(name = "user_id")
+	private Long userId;
 
-    @Column(name = "coupon_id")
-    private Long couponId;
+	@Column(name = "coupon_id")
+	private Long couponId;
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        UserCouponId that = (UserCouponId) o;
-        return Objects.equals(userId, that.userId) && Objects.equals(couponId, that.couponId);
-    }
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+		UserCouponId that = (UserCouponId) o;
+		return Objects.equals(userId, that.userId) && Objects.equals(couponId, that.couponId);
+	}
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(userId, couponId);
-    }
+	@Override
+	public int hashCode() {
+		return Objects.hash(userId, couponId);
+	}
 }

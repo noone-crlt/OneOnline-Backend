@@ -8,6 +8,6 @@ import com.thientri.book_area.model.inventory.InventoryLog;
 
 @Repository
 public interface InventoryLogRepository extends JpaRepository<InventoryLog, Long> {
-    // Kiểm kê lịch sử xuất/nhập của một SKU
-    Page<InventoryLog> findByEditionIdOrderByCreatedAtDesc(Long editionId, Pageable pageable);
+	// Kiểm kê lịch sử xuất/nhập của một SKU
+	Page<InventoryLog> findByEditionIdOrderByCreatedAtDesc(Long editionId, Pageable pageable);
 }

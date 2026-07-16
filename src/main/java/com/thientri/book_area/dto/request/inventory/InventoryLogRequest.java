@@ -12,7 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class InventoryLogRequest {
-    private Long bookId;
-    private Integer changeAmount;
-    private String reason;
+	private Long bookId;
+	private Integer changeAmount;
+	private String reason;
 }

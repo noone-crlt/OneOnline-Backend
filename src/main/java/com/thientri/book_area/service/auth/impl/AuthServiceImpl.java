@@ -33,107 +33,96 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements IAuthService {
 
-    // Tiêm (Inject) các dependencies một cách an toàn thông qua Lombok
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final RefreshTokenRepository refreshTokenRepository; // Thêm repo này
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService; // Thêm JWT Service
-    private final AuthenticationManager authenticationManager; // Thêm Auth Manager
-    private final UserMapper userMapper; // Thêm Mapper
+	// Tiêm (Inject) các dependencies một cách an toàn thông qua Lombok
+	private final UserRepository userRepository;
+	private final RoleRepository roleRepository;
+	private final RefreshTokenRepository refreshTokenRepository; // Thêm repo này
+	private final PasswordEncoder passwordEncoder;
+	private final JwtService jwtService; // Thêm JWT Service
+	private final AuthenticationManager authenticationManager; // Thêm Auth Manager
+	private final UserMapper userMapper; // Thêm Mapper
 
-    @Override
-    @Transactional // Đảm bảo tính toàn vẹn: Lỗi ở bất kỳ dòng nào thì rollback toàn bộ
-    public void register(RegisterRequest request) {
+	@Override
+	@Transactional // Đảm bảo tính toàn vẹn: Lỗi ở bất kỳ dòng nào thì rollback toàn bộ
+	public void register(RegisterRequest request) {
 
-        // 1. Kiểm tra nghiệp vụ: Email đã tồn tại chưa?
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email này đã được sử dụng trong hệ thống.");
-        }
+		// 1. Kiểm tra nghiệp vụ: Email đã tồn tại chưa?
+		if (userRepository.existsByEmail(request.getEmail())) {
+			throw new BadRequestException("Email này đã được sử dụng trong hệ thống.");
+		}
 
-        // 2. Tìm quyền mặc định (ROLE_USER) cho tài khoản mới
-        Role userRole = roleRepository.findByName("USER")
-                .orElseThrow(() -> new RuntimeException("Lỗi hệ thống: Không tìm thấy quyền ROLE_USER"));
+		// 2. Tìm quyền mặc định (ROLE_USER) cho tài khoản mới
+		Role userRole = roleRepository.findByName("USER")
+				.orElseThrow(() -> new RuntimeException("Lỗi hệ thống: Không tìm thấy quyền ROLE_USER"));
 
-        Set<Role> roles = new HashSet<>();
-        roles.add(userRole);
+		Set<Role> roles = new HashSet<>();
+		roles.add(userRole);
 
-        // 3. Chuyển đổi DTO thành Entity bằng Builder
-        User newUser = User.builder()
-                .email(request.getEmail())
-                // BẮT BUỘC: Mã hóa mật khẩu trước khi lưu xuống DB
-                .password(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .phone(request.getPhone())
-                .status(UserStatus.ACTIVE)
-                .roles(roles)
-                .build();
+		// 3. Chuyển đổi DTO thành Entity bằng Builder
+		User newUser = User.builder().email(request.getEmail())
+				// BẮT BUỘC: Mã hóa mật khẩu trước khi lưu xuống DB
+				.password(passwordEncoder.encode(request.getPassword())).fullName(request.getFullName())
+				.phone(request.getPhone()).status(UserStatus.ACTIVE).roles(roles).build();
 
-        // 4. Khởi tạo giỏ hàng trống (Sử dụng hàm Helper đã viết trong Model)
-        newUser.initCart();
+		// 5. Lưu xuống Database
+		userRepository.save(newUser);
+	}
 
-        // 5. Lưu xuống Database
-        userRepository.save(newUser);
-    }
+	@Override
+	@Transactional
+	public AuthResponse login(LoginRequest request) {
 
-    @Override
-    @Transactional
-    public AuthResponse login(LoginRequest request) {
+		// 1. Kích hoạt Spring Security kiểm tra Email và Password
+		// Nếu sai, nó sẽ tự động ném ra BadCredentialsException (Sai mật khẩu/tài
+		// khoản)
+		authenticationManager
+				.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
-        // 1. Kích hoạt Spring Security kiểm tra Email và Password
-        // Nếu sai, nó sẽ tự động ném ra BadCredentialsException (Sai mật khẩu/tài
-        // khoản)
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+		// 2. Lấy thông tin User từ Database (Chắc chắn tồn tại vì bước 1 đã qua)
+		User user = userRepository.findByEmail(request.getEmail())
+				.orElseThrow(() -> new BadRequestException("Tài khoản không tồn tại."));
 
-        // 2. Lấy thông tin User từ Database (Chắc chắn tồn tại vì bước 1 đã qua)
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadRequestException("Tài khoản không tồn tại."));
+		// Kiểm tra xem user có bị xóa mềm hay ban không
+		if (!user.isEnabled() || !user.isAccountNonLocked()) {
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa.");
+		}
 
-        // Kiểm tra xem user có bị xóa mềm hay ban không
-        if (!user.isEnabled() || !user.isAccountNonLocked()) {
-            throw new BadRequestException("Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa.");
-        }
+		// 3. Tạo Access Token (Tuổi thọ ngắn)
+		String accessToken = jwtService.generateToken(user);
 
-        // 3. Tạo Access Token (Tuổi thọ ngắn)
-        String accessToken = jwtService.generateToken(user);
+		// 4. Sinh Refresh Token (Tuổi thọ dài) và lưu vào Database
+		String refreshToken = generateAndSaveRefreshToken(user);
 
-        // 4. Sinh Refresh Token (Tuổi thọ dài) và lưu vào Database
-        String refreshToken = generateAndSaveRefreshToken(user);
+		// 5. Đóng gói dữ liệu trả về Frontend
+		return userMapper.toAuthResponse(user, accessToken, refreshToken);
+	}
 
-        // 5. Đóng gói dữ liệu trả về Frontend
-        return userMapper.toAuthResponse(user, accessToken, refreshToken);
-    }
+	// Helper method xử lý tạo Refresh Token an toàn
+	@Override
+	@Transactional
+	public User updateProfile(User currentUser, UpdateProfileRequest request) {
+		User user = userRepository.findById(currentUser.getId())
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản."));
 
-    // Helper method xử lý tạo Refresh Token an toàn
-    @Override
-    @Transactional
-    public User updateProfile(User currentUser, UpdateProfileRequest request) {
-        User user = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản."));
+		user.setFullName(request.getFullName().trim());
+		String phone = request.getPhone();
+		user.setPhone(phone == null || phone.isBlank() ? null : phone.trim());
+		return userRepository.save(user);
+	}
 
-        user.setFullName(request.getFullName().trim());
-        String phone = request.getPhone();
-        user.setPhone(phone == null || phone.isBlank() ? null : phone.trim());
-        return userRepository.save(user);
-    }
+	private String generateAndSaveRefreshToken(User user) {
+		// Thu hồi (xóa) các token cũ của thiết bị trước để tránh spam rác DB
+		refreshTokenRepository.deleteByUser(user);
 
-    private String generateAndSaveRefreshToken(User user) {
-        // Thu hồi (xóa) các token cũ của thiết bị trước để tránh spam rác DB
-        refreshTokenRepository.deleteByUser(user);
+		// Sinh một chuỗi ngẫu nhiên, độc nhất làm Refresh Token
+		String tokenString = UUID.randomUUID().toString();
 
-        // Sinh một chuỗi ngẫu nhiên, độc nhất làm Refresh Token
-        String tokenString = UUID.randomUUID().toString();
+		RefreshToken refreshToken = RefreshToken.builder().user(user).refreshToken(tokenString)
+				.expiryDate(LocalDateTime.now().plusDays(7)) // Tuổi thọ 7 ngày
+				.revoked(false).build();
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .refreshToken(tokenString)
-                .expiryDate(LocalDateTime.now().plusDays(7)) // Tuổi thọ 7 ngày
-                .revoked(false)
-                .build();
+		refreshTokenRepository.save(refreshToken);
 
-        refreshTokenRepository.save(refreshToken);
-
-        return tokenString;
-    }
+		return tokenString;
+	}
 }

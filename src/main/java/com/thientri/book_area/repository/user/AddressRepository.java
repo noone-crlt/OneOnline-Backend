@@ -8,8 +8,8 @@ import com.thientri.book_area.model.user.Address;
 
 @Repository
 public interface AddressRepository extends JpaRepository<Address, Long> {
-    List<Address> findByUserId(Long userId);
-    
-    // Tìm địa chỉ mặc định của người dùng khi họ tiến hành thanh toán
-    Optional<Address> findByUserIdAndIsDefaultTrue(Long userId);
+	List<Address> findByUserId(Long userId);
+
+	// Tìm địa chỉ mặc định của người dùng khi họ tiến hành thanh toán
+	Optional<Address> findByUserIdAndIsDefaultTrue(Long userId);
 }

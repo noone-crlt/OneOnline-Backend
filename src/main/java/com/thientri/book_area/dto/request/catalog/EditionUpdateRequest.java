@@ -6,10 +6,10 @@ import lombok.Data;
 
 @Data
 public class EditionUpdateRequest {
-    private BigDecimal originalPrice;
-    private BigDecimal salePrice;
-    private Integer stock;
-    private Integer duration;
-    private List<Long> narratorIds;
+	private BigDecimal originalPrice;
+	private BigDecimal salePrice;
+	private Integer stock;
+	private Integer duration;
+	private List<Long> narratorIds;
 
 }

@@ -1,5 +1,7 @@
 package com.thientri.book_area.controller.admin;
 
+import com.thientri.book_area.dto.response.ApiResponse;
+
 import java.util.List;
 
 import org.springframework.http.MediaType;
@@ -25,37 +27,35 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BookEditionController {
 
-    private final IBookEditionService bookEditionService;
+	private final IBookEditionService bookEditionService;
 
-    // ==========================================
-    // API ADMIN (Quản lý các định dạng Ebook/Audio/Physical)
-    // ==========================================
+	// ==========================================
+	// API ADMIN (Quản lý các định dạng Ebook/Audio/Physical)
+	// ==========================================
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> createEdition(
-            @Valid @RequestPart("data") EditionCreateRequest request,
-            @RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
-            @RequestPart(value = "contentFile", required = false) MultipartFile contentFile,
-            @RequestPart(value = "audioFiles", required = false) List<MultipartFile> audioFiles) {
+	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ApiResponse<Void>> createEdition(@Valid @RequestPart("data") EditionCreateRequest request,
+			@RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
+			@RequestPart(value = "contentFile", required = false) MultipartFile contentFile,
+			@RequestPart(value = "audioFiles", required = false) List<MultipartFile> audioFiles) {
 
-        bookEditionService.createEdition(request, coverFile, contentFile, audioFiles);
-        return ResponseEntity.ok("Tạo phiên bản sách thành công!");
-    }
+		bookEditionService.createEdition(request, coverFile, contentFile, audioFiles);
+		return ResponseEntity.ok(ApiResponse.success("Tạo phiên bản sách thành công!", null));
+	}
 
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> updateEdition(
-            @PathVariable Long id,
-            @Valid @RequestPart("data") EditionUpdateRequest request,
-            @RequestPart(value = "newCoverFile", required = false) MultipartFile newCoverFile,
-            @RequestPart(value = "newContentFile", required = false) MultipartFile newContentFile) {
+	@PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ApiResponse<Void>> updateEdition(@PathVariable Long id,
+			@Valid @RequestPart("data") EditionUpdateRequest request,
+			@RequestPart(value = "newCoverFile", required = false) MultipartFile newCoverFile,
+			@RequestPart(value = "newContentFile", required = false) MultipartFile newContentFile) {
 
-        bookEditionService.updateEdition(id, request, newCoverFile, newContentFile);
-        return ResponseEntity.ok("Cập nhật thông tin phiên bản thành công!");
-    }
+		bookEditionService.updateEdition(id, request, newCoverFile, newContentFile);
+		return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin phiên bản thành công!", null));
+	}
 
-    @DeleteMapping("/audio-chapters/{chapterId}")
-    public ResponseEntity<String> deleteAudioChapter(@PathVariable Long chapterId) {
-        bookEditionService.deleteAudioChapter(chapterId);
-        return ResponseEntity.ok("Xóa chương sách nói thành công!");
-    }
+	@DeleteMapping("/audio-chapters/{chapterId}")
+	public ResponseEntity<ApiResponse<Void>> deleteAudioChapter(@PathVariable Long chapterId) {
+		bookEditionService.deleteAudioChapter(chapterId);
+		return ResponseEntity.ok(ApiResponse.success("Xóa chương sách nói thành công!", null));
+	}
 }

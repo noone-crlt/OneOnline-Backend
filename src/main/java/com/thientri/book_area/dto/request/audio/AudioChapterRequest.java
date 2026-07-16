@@ -13,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 // Bỏ thuộc tính duration đi
 public class AudioChapterRequest {
-    private Long audiobookId;
-    private String title;
-    private MultipartFile fileAudio;
+	private Long audiobookId;
+	private String title;
+	private MultipartFile fileAudio;
 }

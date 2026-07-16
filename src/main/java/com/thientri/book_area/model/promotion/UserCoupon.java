@@ -23,21 +23,21 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class UserCoupon {
-    @EmbeddedId
-    private UserCouponId id;
+	@EmbeddedId
+	private UserCouponId id;
 
-    @ManyToOne
-    @MapsId("userId")
-    @JoinColumn(name = "user_id")
-    private User user;
+	@ManyToOne
+	@MapsId("userId")
+	@JoinColumn(name = "user_id")
+	private User user;
 
-    @ManyToOne
-    @MapsId("couponId")
-    @JoinColumn(name = "coupon_id")
-    private Coupon coupon;
+	@ManyToOne
+	@MapsId("couponId")
+	@JoinColumn(name = "coupon_id")
+	private Coupon coupon;
 
-    // SỬA: Để Hibernate tự xử lý kiểu BIT của SQL Server
-    @Column(name = "used")
-    @Builder.Default
-    private Boolean used = false;
+	// SỬA: Để Hibernate tự xử lý kiểu BIT của SQL Server
+	@Column(name = "used")
+	@Builder.Default
+	private Boolean used = false;
 }
