@@ -1,0 +1,6 @@
+# Dockerfile của backend chỉ cần các tệp dưới đây.
+*
+!Dockerfile
+!pom.xml
+!src/
+!src/**
