@@ -157,12 +157,14 @@ public class OrderService {
 		if (!sePayService.isExpectedAccount(request.getAccountNumber()))
 			throw new BadRequestException("Tài khoản nhận tiền không hợp lệ.");
 		String orderCode = extractOrderCode(request);
-		Payment payment = paymentRepository.findByOrderOrderCode(orderCode)
+		Payment payment = paymentRepository.findByOrderCodeForUpdate(orderCode)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch."));
 		if (!"SEPAY".equalsIgnoreCase(payment.getPaymentMethod()))
 			throw new BadRequestException("Phương thức thanh toán không hợp lệ.");
-		if (payment.getStatus() != PaymentStatus.PENDING)
+		if (payment.getStatus() == PaymentStatus.SUCCESS)
 			return payment;
+		if (payment.getStatus() != PaymentStatus.PENDING)
+			throw new BadRequestException("Đơn hàng đã bị hủy. Giao dịch đến muộn cần được hoàn tiền.");
 		String transactionId = request.getId() == null ? request.getReferenceCode() : request.getId().toString();
 		if (transactionId == null || transactionId.isBlank())
 			throw new BadRequestException("Mã giao dịch SePay không hợp lệ.");
@@ -180,6 +182,24 @@ public class OrderService {
 		payment.getOrder().setStatus("CONFIRMED");
 		grantDigitalBooks(payment.getOrder());
 		return paymentRepository.save(payment);
+	}
+
+	@Transactional
+	public PaymentStatusResponse cancelPayment(User user, String orderCode) {
+		Payment payment = paymentRepository.findByOrderCodeAndUserIdForUpdate(orderCode, user.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch."));
+		if (payment.getStatus() == PaymentStatus.SUCCESS)
+			throw new BadRequestException("Không thể hủy giao dịch đã thanh toán thành công.");
+		if (payment.getStatus() != PaymentStatus.PENDING)
+			return sePayService.statusResponse(payment);
+
+		payment.getOrder().getOrderItems().stream()
+				.filter(item -> "PHYSICAL".equals(item.getEdition().getFormat()))
+				.forEach(item -> item.getEdition().setStock(
+						(item.getEdition().getStock() == null ? 0 : item.getEdition().getStock()) + item.getQuantity()));
+		payment.setStatus(PaymentStatus.FAILED);
+		payment.getOrder().setStatus("CANCELLED");
+		return sePayService.statusResponse(paymentRepository.save(payment));
 	}
 
 	@Transactional(readOnly = true)

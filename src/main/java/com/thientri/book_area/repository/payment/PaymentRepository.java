@@ -3,9 +3,12 @@ package com.thientri.book_area.repository.payment;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import jakarta.persistence.LockModeType;
 import com.thientri.book_area.model.payment.Payment;
 import com.thientri.book_area.model.payment.PaymentStatus;
 
@@ -20,6 +23,15 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	Optional<Payment> findByOrderOrderCode(String orderCode);
 
 	Optional<Payment> findByOrderOrderCodeAndOrderUserId(String orderCode, Long userId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select p from Payment p join fetch p.order o where o.orderCode = :orderCode")
+	Optional<Payment> findByOrderCodeForUpdate(@Param("orderCode") String orderCode);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select p from Payment p join fetch p.order o where o.orderCode = :orderCode and o.user.id = :userId")
+	Optional<Payment> findByOrderCodeAndUserIdForUpdate(@Param("orderCode") String orderCode,
+			@Param("userId") Long userId);
 
 	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = :status")
 	BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);

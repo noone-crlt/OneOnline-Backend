@@ -66,4 +66,10 @@ public class PaymentController {
 			@AuthenticationPrincipal User user) {
 		return ResponseEntity.ok(ApiResponse.success(orderService.paymentStatus(user, orderCode)));
 	}
+
+	@PostMapping("/{orderCode}/cancel")
+	public ResponseEntity<ApiResponse<PaymentStatusResponse>> cancelPayment(@PathVariable String orderCode,
+			@AuthenticationPrincipal User user) {
+		return ResponseEntity.ok(ApiResponse.success(orderService.cancelPayment(user, orderCode)));
+	}
 }
