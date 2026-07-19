@@ -22,6 +22,8 @@ import com.thientri.book_area.model.payment.Payment;
 
 @Service
 public class SePayService {
+	private static final String VIETINBANK_PAYMENT_PREFIX = "SEVQR ";
+
 	private final String bankCode;
 	private final String accountNumber;
 	private final String accountName;
@@ -44,7 +46,7 @@ public class SePayService {
 		return CheckoutResponse.builder().orderCode(payment.getOrder().getOrderCode())
 				.paymentStatus(payment.getStatus().name()).paymentUrl(qrUrl(payment)).bankCode(bankCode)
 				.accountNumber(accountNumber).accountName(accountName).amount(payment.getAmount())
-				.transferContent(payment.getOrder().getOrderCode()).expiresAt(expiresAt(payment)).build();
+				.transferContent(paymentContent(payment)).expiresAt(expiresAt(payment)).build();
 	}
 
 	public PaymentStatusResponse statusResponse(Payment payment) {
@@ -53,7 +55,7 @@ public class SePayService {
 				.status(payment.getStatus().name()).paymentMethod(payment.getPaymentMethod())
 				.paymentUrl(sepay ? qrUrl(payment) : null).bankCode(sepay ? bankCode : null)
 				.accountNumber(sepay ? accountNumber : null).accountName(sepay ? accountName : null)
-				.amount(payment.getAmount()).transferContent(sepay ? payment.getOrder().getOrderCode() : null)
+				.amount(payment.getAmount()).transferContent(sepay ? paymentContent(payment) : null)
 				.expiresAt(sepay ? expiresAt(payment) : null).build();
 	}
 
@@ -86,7 +88,11 @@ public class SePayService {
 
 	private String qrUrl(Payment payment) {
 		return "https://vietqr.app/img?acc=" + encode(accountNumber) + "&bank=" + encode(bankCode) + "&amount="
-				+ payment.getAmount().setScale(0).toPlainString() + "&des=" + encode(payment.getOrder().getOrderCode());
+				+ payment.getAmount().setScale(0).toPlainString() + "&des=" + encode(paymentContent(payment));
+	}
+
+	private String paymentContent(Payment payment) {
+		return VIETINBANK_PAYMENT_PREFIX + payment.getOrder().getOrderCode();
 	}
 
 	private OffsetDateTime expiresAt(Payment payment) {

@@ -31,9 +31,9 @@ class SePayServiceTest {
 
 		var response = service.checkoutResponse(payment);
 
-		assertEquals("https://vietqr.app/img?acc=0123456789&bank=VCB&amount=125000&des=BA123ABC",
+		assertEquals("https://vietqr.app/img?acc=0123456789&bank=VCB&amount=125000&des=SEVQR+BA123ABC",
 				response.getPaymentUrl());
-		assertEquals("BA123ABC", response.getTransferContent());
+		assertEquals("SEVQR BA123ABC", response.getTransferContent());
 	}
 
 	@Test
