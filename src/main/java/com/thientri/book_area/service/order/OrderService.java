@@ -91,8 +91,7 @@ public class OrderService {
 		BigDecimal shippingFee = physical ? BigDecimal.valueOf(30000) : BigDecimal.ZERO;
 
 		Order order = Order.builder()
-				.orderCode(
-						"BA" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 4).toUpperCase())
+				.orderCode("BA" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
 				.user(user).status("PENDING").recipientName(physical ? address.getRecipientName() : null)
 				.recipientPhone(physical ? address.getRecipientPhone() : null)
 				.shippingAddressLine(physical ? address.getAddressLine() : null)
