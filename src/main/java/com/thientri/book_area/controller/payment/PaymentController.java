@@ -37,12 +37,18 @@ public class PaymentController {
 			@RequestHeader(value = "X-SePay-Timestamp", required = false) String timestamp) {
 		try {
 			sePayService.verifySignature(rawBody, signature, timestamp);
+		} catch (BadRequestException exception) {
+			log.warn("SePay webhook có chữ ký không hợp lệ: {}", exception.getMessage());
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(exception.getMessage()));
+		}
+
+		try {
 			WebhookRequest request = objectMapper.readValue(rawBody, WebhookRequest.class);
 			orderService.handleSePayWebhook(request, new String(rawBody, StandardCharsets.UTF_8));
 			return ResponseEntity.ok(Map.of("success", true));
 		} catch (BadRequestException exception) {
-			log.warn("SePay webhook bị từ chối: {}", exception.getMessage());
-			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(exception.getMessage()));
+			log.warn("SePay webhook không áp dụng giao dịch: {}", exception.getMessage());
+			return ResponseEntity.ok(Map.of("success", true));
 		} catch (ResourceNotFoundException exception) {
 			log.warn("SePay webhook không khớp đơn hàng: {}", exception.getMessage());
 			return ResponseEntity.ok(Map.of("success", true));
