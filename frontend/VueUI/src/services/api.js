@@ -7,7 +7,11 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD
+    ? 'https://book-area-api-313942406394.asia-southeast1.run.app'
+    : 'http://localhost:8080')
 const AUTH_STORAGE_KEY = 'book-area-auth-session'
 
 function canUseStorage() {
