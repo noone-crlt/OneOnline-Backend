@@ -1,7 +1,7 @@
 package com.thientri.book_area.dto.response.order;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import lombok.Builder;
 import lombok.Data;
@@ -17,5 +17,5 @@ public class CheckoutResponse {
 	private String accountName;
 	private BigDecimal amount;
 	private String transferContent;
-	private LocalDateTime expiresAt;
+	private OffsetDateTime expiresAt;
 }

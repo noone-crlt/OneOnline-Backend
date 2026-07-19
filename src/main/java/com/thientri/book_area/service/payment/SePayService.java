@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HexFormat;
 
 import javax.crypto.Mac;
@@ -87,9 +89,10 @@ public class SePayService {
 				+ payment.getAmount().setScale(0).toPlainString() + "&des=" + encode(payment.getOrder().getOrderCode());
 	}
 
-	private LocalDateTime expiresAt(Payment payment) {
+	private OffsetDateTime expiresAt(Payment payment) {
 		LocalDateTime createdAt = payment.getOrder().getCreatedAt();
-		return (createdAt == null ? LocalDateTime.now() : createdAt).plusMinutes(timeoutMinutes);
+		return (createdAt == null ? LocalDateTime.now(ZoneOffset.UTC) : createdAt).plusMinutes(timeoutMinutes)
+				.atOffset(ZoneOffset.UTC);
 	}
 
 	private String encode(String value) {
