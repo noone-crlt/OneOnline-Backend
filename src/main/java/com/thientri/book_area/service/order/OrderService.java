@@ -3,7 +3,8 @@ package com.thientri.book_area.service.order;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Locale;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -91,7 +92,7 @@ public class OrderService {
 		BigDecimal shippingFee = physical ? BigDecimal.valueOf(30000) : BigDecimal.ZERO;
 
 		Order order = Order.builder()
-				.orderCode("BA" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
+				.orderCode(generateOrderCode())
 				.user(user).status("PENDING").recipientName(physical ? address.getRecipientName() : null)
 				.recipientPhone(physical ? address.getRecipientPhone() : null)
 				.shippingAddressLine(physical ? address.getAddressLine() : null)
@@ -119,6 +120,16 @@ public class OrderService {
 					.build();
 		}
 		return sePayService.checkoutResponse(payment);
+	}
+
+	private String generateOrderCode() {
+		for (int attempt = 0; attempt < 20; attempt++) {
+			String orderCode = "BA" + String.format(Locale.ROOT, "%06d",
+					ThreadLocalRandom.current().nextInt(1_000_000));
+			if (!orderRepository.existsByOrderCode(orderCode))
+				return orderCode;
+		}
+		throw new IllegalStateException("Không thể tạo mã đơn hàng duy nhất.");
 	}
 
 	private void validateCheckoutItem(CartItem item) {

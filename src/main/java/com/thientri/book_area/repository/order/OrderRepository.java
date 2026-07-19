@@ -9,6 +9,8 @@ import com.thientri.book_area.model.order.Order;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
+	boolean existsByOrderCode(String orderCode);
+
 	// Tìm đơn hàng theo mã giao dịch
 	Optional<Order> findByOrderCode(String orderCode);
 
