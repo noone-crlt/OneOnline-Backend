@@ -4,6 +4,7 @@ import com.thientri.book_area.dto.response.ApiResponse;
 import com.thientri.book_area.dto.response.payment.PaymentStatusResponse;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,14 +29,14 @@ public class PaymentController {
 	private final ObjectMapper objectMapper;
 
 	@PostMapping("/sepay-webhook")
-	public ResponseEntity<ApiResponse<Void>> sePayWebhook(@RequestBody byte[] rawBody,
+	public ResponseEntity<?> sePayWebhook(@RequestBody byte[] rawBody,
 			@RequestHeader(value = "X-SePay-Signature", required = false) String signature,
 			@RequestHeader(value = "X-SePay-Timestamp", required = false) String timestamp) {
 		try {
 			sePayService.verifySignature(rawBody, signature, timestamp);
 			WebhookRequest request = objectMapper.readValue(rawBody, WebhookRequest.class);
 			orderService.handleSePayWebhook(request, new String(rawBody, StandardCharsets.UTF_8));
-			return ResponseEntity.ok(ApiResponse.success("Webhook processed successfully", null));
+			return ResponseEntity.ok(Map.of("success", true));
 		} catch (BadRequestException exception) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(exception.getMessage()));
 		} catch (Exception exception) {
