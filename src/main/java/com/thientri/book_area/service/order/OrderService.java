@@ -179,14 +179,14 @@ public class OrderService {
 	}
 
 	private String extractOrderCode(WebhookRequest request) {
-		if (request.getCode() != null && request.getCode().matches("(?i)BA[A-Z0-9]+"))
-			return request.getCode().toUpperCase();
 		if (request.getContent() != null) {
 			java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?i)\\bBA[A-Z0-9]+\\b")
 					.matcher(request.getContent());
 			if (matcher.find())
 				return matcher.group().toUpperCase();
 		}
+		if (request.getCode() != null && request.getCode().matches("(?i)BA[A-Z0-9]+"))
+			return request.getCode().toUpperCase();
 		throw new BadRequestException("Không tìm thấy mã đơn hàng trong giao dịch.");
 	}
 

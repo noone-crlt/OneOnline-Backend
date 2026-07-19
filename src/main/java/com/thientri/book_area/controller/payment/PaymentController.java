@@ -48,13 +48,16 @@ public class PaymentController {
 			return ResponseEntity.ok(Map.of("success", true));
 		} catch (BadRequestException exception) {
 			log.warn("SePay webhook không áp dụng giao dịch: {}", exception.getMessage());
-			return ResponseEntity.ok(Map.of("success", true));
+			return ResponseEntity.unprocessableEntity()
+					.body(Map.of("success", false, "message", exception.getMessage()));
 		} catch (ResourceNotFoundException exception) {
 			log.warn("SePay webhook không khớp đơn hàng: {}", exception.getMessage());
-			return ResponseEntity.ok(Map.of("success", true));
+			return ResponseEntity.unprocessableEntity()
+					.body(Map.of("success", false, "message", exception.getMessage()));
 		} catch (Exception exception) {
 			log.error("Không thể xử lý webhook SePay.", exception);
-			return ResponseEntity.badRequest().body(ApiResponse.error("Dữ liệu webhook SePay không hợp lệ."));
+			return ResponseEntity.internalServerError()
+					.body(ApiResponse.error("Không thể xử lý webhook SePay."));
 		}
 	}
 
