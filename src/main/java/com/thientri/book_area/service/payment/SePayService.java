@@ -26,10 +26,11 @@ public class SePayService {
 	private final String webhookSecret;
 	private final long timeoutMinutes;
 
-	public SePayService(@Value("${sepay.bank-code}") String bankCode,
-			@Value("${sepay.account-number}") String accountNumber, @Value("${sepay.account-name}") String accountName,
-			@Value("${sepay.webhook-secret}") String webhookSecret,
-			@Value("${sepay.payment-timeout-minutes:15}") long timeoutMinutes) {
+	public SePayService(@Value("${SEPAY_BANK_CODE:MB}") String bankCode,
+			@Value("${SEPAY_ACCOUNT_NUMBER:123456789}") String accountNumber,
+			@Value("${SEPAY_ACCOUNT_NAME:TEST ACCOUNT}") String accountName,
+			@Value("${SEPAY_WEBHOOK_SECRET:}") String webhookSecret,
+			@Value("${SEPAY_PAYMENT_TIMEOUT_MINUTES:15}") long timeoutMinutes) {
 		this.bankCode = bankCode.trim();
 		this.accountNumber = accountNumber.trim();
 		this.accountName = accountName.trim();

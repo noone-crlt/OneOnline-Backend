@@ -14,15 +14,18 @@ import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thientri.book_area.dto.request.payment.WebhookRequest;
 import com.thientri.book_area.exception.BadRequestException;
+import com.thientri.book_area.exception.ResourceNotFoundException;
 import com.thientri.book_area.model.user.User;
 import com.thientri.book_area.service.order.OrderService;
 import com.thientri.book_area.service.payment.SePayService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentController {
 	private final OrderService orderService;
 	private final SePayService sePayService;
@@ -38,8 +41,13 @@ public class PaymentController {
 			orderService.handleSePayWebhook(request, new String(rawBody, StandardCharsets.UTF_8));
 			return ResponseEntity.ok(Map.of("success", true));
 		} catch (BadRequestException exception) {
+			log.warn("SePay webhook bị từ chối: {}", exception.getMessage());
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(exception.getMessage()));
+		} catch (ResourceNotFoundException exception) {
+			log.warn("SePay webhook không khớp đơn hàng: {}", exception.getMessage());
+			return ResponseEntity.ok(Map.of("success", true));
 		} catch (Exception exception) {
+			log.error("Không thể xử lý webhook SePay.", exception);
 			return ResponseEntity.badRequest().body(ApiResponse.error("Dữ liệu webhook SePay không hợp lệ."));
 		}
 	}
