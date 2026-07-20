@@ -44,10 +44,13 @@ public class BookController {
 
 	@GetMapping
 	public ResponseEntity<ApiResponse<Page<BookDetailResponse>>> getAllBooks(@RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "10") int size) {
+			@RequestParam(defaultValue = "24") int size,
+			@RequestParam(required = false) String q,
+			@RequestParam(required = false) String category,
+			@RequestParam(required = false) String format) {
 		// Mặc định sắp xếp sách mới nhất lên đầu
 		Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-		return ResponseEntity.ok(ApiResponse.success(bookService.getAllBooks(pageable)));
+		return ResponseEntity.ok(ApiResponse.success(bookService.getAllBooks(q, category, format, pageable)));
 	}
 
 	@GetMapping("/{slug}")

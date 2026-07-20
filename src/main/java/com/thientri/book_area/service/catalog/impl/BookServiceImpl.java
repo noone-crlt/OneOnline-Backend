@@ -68,10 +68,32 @@ public class BookServiceImpl implements IBookService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<BookDetailResponse> getAllBooks(Pageable pageable) {
-        // Tối ưu hóa: Phân trang trực tiếp từ Database, map trực tiếp từ Entity sang DTO
-        Page<Book> bookPage = bookRepository.findAll(pageable);
+    public Page<BookDetailResponse> getAllBooks(String search, String category, String format, Pageable pageable) {
+        String normalizedSearch = normalizeFilter(search);
+        String normalizedCategory = normalizeFilter(category);
+        String normalizedFormat = normalizeFilter(format);
+
+        if (normalizedFormat != null) {
+            normalizedFormat = normalizedFormat.toUpperCase();
+            if (!List.of("PHYSICAL", "EBOOK", "EBOOK_PDF", "EBOOK_EPUB", "AUDIOBOOK")
+                    .contains(normalizedFormat)) {
+                throw new BadRequestException("Định dạng sách cần lọc không hợp lệ.");
+            }
+        }
+
+        Page<Book> bookPage = bookRepository.findCatalog(
+                normalizedSearch,
+                normalizedCategory,
+                normalizedFormat,
+                pageable);
         return bookPage.map(catalogMapper::toBookDetailResponse);
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     // ==========================================

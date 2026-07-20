@@ -14,7 +14,7 @@ public interface IBookService {
 
 	BookDetailResponse getBookDetailBySlug(String slug);
 
-	Page<BookDetailResponse> getAllBooks(Pageable pageable);
+	Page<BookDetailResponse> getAllBooks(String search, String category, String format, Pageable pageable);
 
 	// THÊM: Bắt buộc truyền danh sách file ảnh đính kèm
 	void createBook(BookCreateRequest request, List<MultipartFile> imageFiles);
