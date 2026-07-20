@@ -49,7 +49,11 @@ async function handleSubmit() {
     await router.replace(resolveTarget(session.user))
   } catch (error) {
     errorMessage.value =
-      error instanceof Error ? error.message : 'Đăng nhập thất bại. Vui lòng thử lại.'
+      error instanceof TypeError
+        ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'
+        : error instanceof Error
+          ? error.message
+          : 'Đăng nhập thất bại. Vui lòng thử lại.'
   } finally {
     isSubmitting.value = false
   }

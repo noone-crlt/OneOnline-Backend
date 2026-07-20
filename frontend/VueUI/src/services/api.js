@@ -7,11 +7,11 @@ export class ApiError extends Error {
   }
 }
 
+// Frontend có thể chạy local nhưng API chính được triển khai trên Cloud Run.
+// Khi cần dùng backend local, đặt VITE_API_BASE_URL=http://localhost:8080 trong .env.local.
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
-  (import.meta.env.PROD
-    ? 'https://book-area-api-313942406394.asia-southeast1.run.app'
-    : 'http://localhost:8080')
+  'https://book-area-api-l4hkavao3q-as.a.run.app'
 const AUTH_STORAGE_KEY = 'book-area-auth-session'
 
 function canUseStorage() {
@@ -229,8 +229,8 @@ export async function getBooks() {
   return Array.isArray(payload) ? payload : []
 }
 
-export function getBookBySlug(slug) {
-  return apiFetch(`/api/books/${slug}`)
+export function getBookBySlug(slug, init = {}) {
+  return apiFetch(`/api/books/${slug}`, init)
 }
 
 export function updateCurrentUserProfile(payload) {
@@ -288,8 +288,11 @@ export function getOrderHistory(page = 0, size = 10) {
   return apiFetch(`/api/orders?page=${page}&size=${size}`, { headers: authHeaders() })
 }
 
-export function getReadingUrl(editionId) {
-  return apiFetch(`/api/reading/${editionId}/url`, { headers: authHeaders() })
+export function getReadingUrl(editionId, init = {}) {
+  return apiFetch(`/api/reading/${editionId}/url`, {
+    ...init,
+    headers: authHeaders(init.headers),
+  })
 }
 
 export async function getUserLibrary(page = 0, size = 20) {
