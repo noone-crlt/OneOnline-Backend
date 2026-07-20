@@ -478,7 +478,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.8rem;
-  max-width: min(760px, 100%);
+  max-width: min(850px, 100%);
+  overflow: hidden;
 }
 
 .filter-group {
@@ -487,6 +488,7 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
   gap: 0.75rem;
   max-width: 100%;
+  overflow: hidden;
 }
 
 .filter-group-label {
@@ -501,15 +503,25 @@ onBeforeUnmount(() => {
 
 .mood-filter {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 0.5rem;
   background-color: var(--surface-soft);
   padding: 0.3rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-soft);
+  /* Hide scrollbar */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  max-width: 100%;
+}
+
+.mood-filter::-webkit-scrollbar {
+  display: none;
 }
 
 .mood-filter button {
+  flex-shrink: 0;
   padding: 0.45rem 1.2rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
