@@ -221,12 +221,28 @@ export function logout() {
   clearStoredSession()
 }
 
+export function getBookCatalog(params = {}, init = {}) {
+  const query = new URLSearchParams()
+
+  if (params.q?.trim()) query.set('q', params.q.trim())
+  if (params.category?.trim()) query.set('category', params.category.trim())
+  if (params.format?.trim()) query.set('format', params.format.trim())
+  query.set('page', String(params.page ?? 0))
+  query.set('size', String(params.size ?? 24))
+
+  return apiFetch(`/api/books?${query.toString()}`, init)
+}
+
 export async function getBooks() {
-  const payload = await apiFetch('/api/books')
+  const payload = await getBookCatalog({ size: 100 })
   if (payload && payload.content && Array.isArray(payload.content)) {
     return payload.content
   }
   return Array.isArray(payload) ? payload : []
+}
+
+export function getCategories() {
+  return apiFetch('/api/categories')
 }
 
 export function getBookBySlug(slug, init = {}) {
@@ -282,6 +298,13 @@ export function createOrder(payload) {
 
 export function getPaymentStatus(orderCode) {
   return apiFetch(`/api/payments/${encodeURIComponent(orderCode)}/status`, { headers: authHeaders() })
+}
+
+export function cancelPayment(orderCode) {
+  return apiFetch(`/api/payments/${encodeURIComponent(orderCode)}/cancel`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
 }
 
 export function getOrderHistory(page = 0, size = 10) {

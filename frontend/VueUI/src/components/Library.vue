@@ -1,24 +1,28 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import TopNavbar from './layout/TopNavbar.vue'
-import { getBooks, getFileUrl } from '../services/api'
-import { authUser } from '../stores/auth'
+import { getBookCatalog, getCategories, getFileUrl } from '../services/api'
 
 const router = useRouter()
-const searchQuery = ref('')
-const activeFilter = ref('All')
+const route = useRoute()
+const searchQuery = ref(route.query.q || '')
+const activeFormat = ref('ALL')
+const activeCategory = ref('ALL')
 const books = ref([])
+const categories = ref([])
+const totalBooks = ref(0)
 const isLoading = ref(false)
 const errorMessage = ref('')
-const hasLoadedBooks = ref(false)
+let searchTimer = null
+let activeRequest = null
 
-
-
-// Quick filters: All, Sách giấy (PHYSICAL), Sách điện tử (EBOOK), Sách nói (AUDIOBOOK)
-const filters = ['All', 'Sách giấy', 'Sách điện tử', 'Sách nói']
-
-const bookCount = computed(() => books.value.length)
+const formatFilters = [
+  { label: 'Tất cả', value: 'ALL' },
+  { label: 'Sách giấy', value: 'PHYSICAL' },
+  { label: 'Sách điện tử', value: 'EBOOK' },
+  { label: 'Sách nói', value: 'AUDIOBOOK' },
+]
 
 // Resolve nested data from editions
 const displayBooks = computed(() =>
@@ -60,44 +64,43 @@ const displayBooks = computed(() =>
   }),
 )
 
-const filteredBooks = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-
-  return displayBooks.value.filter((book) => {
-    // Filter formats
-    const matchesFilter =
-      activeFilter.value === 'All' ||
-      (activeFilter.value === 'Sách giấy' && book.formats.includes('PHYSICAL')) ||
-      (activeFilter.value === 'Sách điện tử' && (book.formats.includes('EBOOK_PDF') || book.formats.includes('EBOOK_EPUB'))) ||
-      (activeFilter.value === 'Sách nói' && book.formats.includes('AUDIOBOOK'))
-
-    // Search query matches title, description, authors, or publisher
-    const authorString = book.authorNames ? book.authorNames.join(' ') : ''
-    const matchesQuery =
-      !query ||
-      [book.title, book.description, book.publisherName, authorString]
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-
-    return matchesFilter && matchesQuery
-  })
-})
-
 async function loadBooks() {
+  activeRequest?.abort()
+  const controller = new AbortController()
+  activeRequest = controller
   isLoading.value = true
   errorMessage.value = ''
-  hasLoadedBooks.value = false
 
   try {
-    const payload = await getBooks()
-    books.value = Array.isArray(payload) ? payload : []
+    const payload = await getBookCatalog({
+      q: searchQuery.value,
+      category: activeCategory.value === 'ALL' ? '' : activeCategory.value,
+      format: activeFormat.value === 'ALL' ? '' : activeFormat.value,
+      page: 0,
+      size: 100,
+    }, { signal: controller.signal })
+
+    books.value = Array.isArray(payload?.content) ? payload.content : []
+    totalBooks.value = Number(payload?.totalElements ?? books.value.length)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Không thể tải danh sách sách.'
+    if (error?.name !== 'AbortError') {
+      errorMessage.value = error instanceof Error ? error.message : 'Không thể tải danh sách sách.'
+    }
   } finally {
-    isLoading.value = false
-    await nextTick()
-    hasLoadedBooks.value = true
+    if (activeRequest === controller) {
+      isLoading.value = false
+    }
+  }
+}
+
+async function loadCategories() {
+  try {
+    const payload = await getCategories()
+    categories.value = Array.isArray(payload)
+      ? payload.map((category) => category.name).filter(Boolean)
+      : []
+  } catch {
+    categories.value = []
   }
 }
 
@@ -137,15 +140,27 @@ function openBookDetail(slug) {
   router.push(`/book/${slug}`)
 }
 
-watch([searchQuery, activeFilter], async () => {
-  hasLoadedBooks.value = false
-  await nextTick()
-  hasLoadedBooks.value = true
+watch(searchQuery, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadBooks, 300)
+})
+
+watch([activeFormat, activeCategory], loadBooks)
+
+watch(() => route.query.q, (newQ) => {
+  if (newQ !== undefined) {
+    searchQuery.value = newQ
+  }
 })
 
 onMounted(async () => {
-  await nextTick()
-  loadBooks()
+  await loadCategories()
+  await loadBooks()
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  activeRequest?.abort()
 })
 </script>
 
@@ -191,20 +206,46 @@ onMounted(async () => {
         <div class="catalog-controls">
           <div class="catalog-intro-title">
             <h2 id="catalog-title">Tất cả tác phẩm</h2>
-            <p class="catalog-count">{{ filteredBooks.length }} tác phẩm được tìm thấy</p>
+            <p class="catalog-count">{{ totalBooks }} tác phẩm được tìm thấy</p>
           </div>
 
-          <!-- Category/Format Filters -->
-          <div class="mood-filter" aria-label="Lọc sách theo định dạng">
-            <button
-              v-for="filter in filters"
-              :key="filter"
-              type="button"
-              :class="{ active: activeFilter === filter }"
-              @click="activeFilter = filter"
-            >
-              {{ filter }}
-            </button>
+          <div class="catalog-filter-groups">
+            <div class="filter-group">
+              <span class="filter-group-label">Định dạng</span>
+              <div class="mood-filter" aria-label="Lọc sách theo định dạng">
+                <button
+                  v-for="filter in formatFilters"
+                  :key="filter.value"
+                  type="button"
+                  :class="{ active: activeFormat === filter.value }"
+                  @click="activeFormat = filter.value"
+                >
+                  {{ filter.label }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="categories.length" class="filter-group">
+              <span class="filter-group-label">Thể loại</span>
+              <div class="mood-filter mood-filter-categories" aria-label="Lọc sách theo thể loại">
+                <button
+                  type="button"
+                  :class="{ active: activeCategory === 'ALL' }"
+                  @click="activeCategory = 'ALL'"
+                >
+                  Tất cả
+                </button>
+                <button
+                  v-for="category in categories"
+                  :key="category"
+                  type="button"
+                  :class="{ active: activeCategory === category }"
+                  @click="activeCategory = category"
+                >
+                  {{ category }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -224,13 +265,13 @@ onMounted(async () => {
             Hiện tại cửa hàng chưa có tác phẩm trực tuyến. Vui lòng quay lại sau.
           </div>
 
-          <div v-else-if="filteredBooks.length === 0" class="empty-state">
+          <div v-else-if="displayBooks.length === 0" class="empty-state">
             Không tìm thấy cuốn sách nào khớp với tìm kiếm của bạn.
           </div>
 
           <div v-else class="editorial-books-grid">
             <article
-              v-for="book in filteredBooks"
+              v-for="book in displayBooks"
               :key="book.id ?? book.title"
               class="book-card"
               @click="openBookDetail(book.slug)"
@@ -432,8 +473,35 @@ onMounted(async () => {
   color: var(--text-soft);
 }
 
+.catalog-filter-groups {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.8rem;
+  max-width: min(760px, 100%);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  max-width: 100%;
+}
+
+.filter-group-label {
+  flex: 0 0 auto;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .mood-filter {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   background-color: var(--surface-soft);
   padding: 0.3rem;
@@ -455,6 +523,10 @@ onMounted(async () => {
   background-color: var(--accent);
   color: var(--surface);
   box-shadow: none;
+}
+
+.mood-filter-categories {
+  justify-content: flex-end;
 }
 
 /* Spinner and loading */
@@ -658,6 +730,22 @@ onMounted(async () => {
   .catalog-controls {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .catalog-filter-groups,
+  .filter-group {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .filter-group {
+    flex-direction: column;
+  }
+
+  .mood-filter,
+  .mood-filter-categories {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>
