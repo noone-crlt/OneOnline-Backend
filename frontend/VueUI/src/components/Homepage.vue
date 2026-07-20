@@ -7,6 +7,7 @@ import TopNavbar from './layout/TopNavbar.vue'
 import FeaturedBooksHero from './FeaturedBooksHero.vue'
 import { getBooks, getFileUrl } from '../services/api'
 import { authUser } from '../stores/auth'
+import gsap from 'gsap'
 
 const router = useRouter()
 const pageRoot = ref(null)
