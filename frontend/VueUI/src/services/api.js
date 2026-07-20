@@ -12,11 +12,9 @@ export class ApiError extends Error {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
   'https://book-area-api-l4hkavao3q-as.a.run.app'
-
 const MINIO_BASE_URL = 
   import.meta.env.VITE_MINIO_URL ?? 
   'https://minio1.webtui.vn:9000'
-
 const AUTH_STORAGE_KEY = 'book-area-auth-session'
 
 function canUseStorage() {
