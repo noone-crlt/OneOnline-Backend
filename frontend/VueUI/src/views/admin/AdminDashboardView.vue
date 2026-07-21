@@ -167,17 +167,24 @@ onMounted(loadDashboard)
         </div>
       </div>
 
-      <!-- Metric Cards -->
-      <div class="metrics-grid">
-        <div v-for="card in summaryCards" :key="card.label" class="bento-card metric-card bento-item">
-          <div class="card-surface">
-            <div class="metric-icon" :style="{ color: card.color, backgroundColor: `${card.color}15` }">
-              <component :is="card.icon" :size="28" weight="duotone" />
+      <!-- Metric Cards - Bento 2.0 Asymmetric -->
+      <div class="metrics-bento-grid">
+        <div v-for="(card, index) in summaryCards" :key="card.label" 
+             :class="['bento-card', 'metric-item', 'bento-item', index < 2 ? 'large-metric' : 'small-metric']">
+          <div class="card-surface metric-surface">
+            <!-- Perpetual Micro-interaction wrapper for icons -->
+            <div class="metric-icon-wrapper" :class="{ 'pulse-animation': card.label === 'Doanh thu' }">
+              <div class="metric-icon" :style="{ color: card.color, backgroundColor: `${card.color}15` }">
+                <component :is="card.icon" :size="index < 2 ? 36 : 24" weight="duotone" />
+              </div>
             </div>
-            <div class="metric-data">
-              <strong>{{ card.value }}</strong>
-              <span>{{ card.label }}</span>
+            <div class="metric-value" :class="{ 'large-value': index < 2 }">
+              {{ card.value }}
             </div>
+          </div>
+          <!-- Title outside and below -->
+          <div class="metric-label-outside">
+            {{ card.label }}
           </div>
         </div>
       </div>
@@ -365,51 +372,101 @@ onMounted(loadDashboard)
   width: 100%;
 }
 
-.metrics-grid {
+.metrics-bento-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(12, 1fr);
   gap: 1.5rem;
+  align-items: start;
 }
 
-.metric-card .card-surface {
+.metric-item {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1.75rem;
-  border-radius: 2rem;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Asymmetric Span */
+.large-metric {
+  grid-column: span 6; /* 2 columns across 12-col grid */
+}
+
+.small-metric {
+  grid-column: span 4; /* 3 columns across 12-col grid, will wrap nicely */
+}
+
+@media (max-width: 1024px) {
+  .large-metric { grid-column: span 6; }
+  .small-metric { grid-column: span 6; }
+}
+@media (max-width: 768px) {
+  .large-metric { grid-column: span 12; }
+  .small-metric { grid-column: span 12; }
+}
+
+.metric-surface {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2rem;
+  border-radius: 2.5rem;
+  height: auto;
+  min-height: 140px;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.metric-card:hover .card-surface {
+.metric-surface:hover {
   transform: translateY(-4px);
   box-shadow: 0 30px 50px -15px rgba(0,0,0,0.08);
 }
 
+.metric-icon-wrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .metric-icon {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   border-radius: 1.25rem;
   display: grid;
   place-items: center;
 }
 
-.metric-data {
-  display: flex;
-  flex-direction: column;
+.large-metric .metric-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 1.5rem;
 }
 
-.metric-data strong {
+.metric-value {
   font-size: 2rem;
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
+  color: var(--text-main);
 }
 
-.metric-data span {
+.large-value {
+  font-size: 3rem;
+}
+
+.metric-label-outside {
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--text-muted);
-  font-size: 0.95rem;
-  font-weight: 500;
-  margin-top: 0.25rem;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+/* Perpetual Micro-animation */
+.pulse-animation .metric-icon {
+  animation: pulse-soft 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }
 
 /* Skeleton Loading */

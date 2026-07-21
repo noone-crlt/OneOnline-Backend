@@ -201,6 +201,17 @@ export async function login(credentials) {
   return session
 }
 
+export async function loginWithGoogle(credential) {
+  const payload = await apiFetch('/api/auth/google', {
+    method: 'POST',
+    body: { credential },
+  })
+
+  const session = normalizeAuthResponse(payload)
+  setStoredSession(session)
+  return session
+}
+
 export async function register(payload) {
   return apiFetch('/api/auth/register', {
     method: 'POST',
@@ -250,6 +261,57 @@ export function getCategories() {
 
 export function getBookBySlug(slug, init = {}) {
   return apiFetch(`/api/books/${slug}`, init)
+}
+
+export function getAdminBooks(params = {}) {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 0),
+    size: String(params.size ?? 10),
+  })
+
+  if (params.q?.trim()) query.set('q', params.q.trim())
+  if (params.category?.trim()) query.set('category', params.category.trim())
+  if (typeof params.isActive === 'boolean') query.set('isActive', String(params.isActive))
+
+  return apiFetch(`/api/admin/books?${query.toString()}`, { headers: authHeaders() })
+}
+
+export function getAdminBook(bookId) {
+  return apiFetch(`/api/admin/books/${bookId}`, { headers: authHeaders() })
+}
+
+export function getAdminBookFormOptions() {
+  return apiFetch('/api/admin/books/form-options', { headers: authHeaders() })
+}
+
+function buildBookFormData(data, coverFile) {
+  const formData = new FormData()
+  formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }))
+  if (coverFile) formData.append('coverFile', coverFile)
+  return formData
+}
+
+export function createAdminBook(data, coverFile) {
+  return apiFetch('/api/admin/books', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: buildBookFormData(data, coverFile),
+  })
+}
+
+export function updateAdminBook(bookId, data, coverFile) {
+  return apiFetch(`/api/admin/books/${bookId}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: buildBookFormData(data, coverFile),
+  })
+}
+
+export function updateAdminBookStatus(bookId, isActive) {
+  return apiFetch(`/api/admin/books/${bookId}/status?isActive=${isActive}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
 }
 
 export function updateCurrentUserProfile(payload) {
@@ -344,4 +406,8 @@ export function getFileUrl(path) {
   }
 
   return `${MINIO_BASE_URL}/book-area-files/${cleanPath}`
+}
+
+export function getFeaturedCategories() {
+  return apiFetch('/api/categories/featured')
 }

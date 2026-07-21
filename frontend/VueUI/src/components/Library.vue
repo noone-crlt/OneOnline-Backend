@@ -8,7 +8,7 @@ const router = useRouter()
 const route = useRoute()
 const searchQuery = ref(route.query.q || '')
 const activeFormat = ref('ALL')
-const activeCategory = ref('ALL')
+const activeCategory = ref(route.query.category || 'ALL')
 const books = ref([])
 const categories = ref([])
 const totalBooks = ref(0)
@@ -151,6 +151,10 @@ watch(() => route.query.q, (newQ) => {
   if (newQ !== undefined) {
     searchQuery.value = newQ
   }
+})
+
+watch(() => route.query.category, (newCategory) => {
+  activeCategory.value = newCategory || 'ALL'
 })
 
 onMounted(async () => {

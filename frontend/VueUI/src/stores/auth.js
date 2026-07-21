@@ -9,6 +9,7 @@ import {
   getStoredSession,
   apiFetch,
   login as apiLogin,
+  loginWithGoogle as apiLoginWithGoogle,
   logout as clearAuthSession,
   register as apiRegister,
   setStoredSession,
@@ -83,6 +84,12 @@ export function updateAuthUser(user) {
 
 export async function login(payload) {
   const session = await apiLogin(payload)
+  applySession(session)
+  return session
+}
+
+export async function loginWithGoogle(credential) {
+  const session = await apiLoginWithGoogle(credential)
   applySession(session)
   return session
 }

@@ -5,7 +5,7 @@ import { Search, BookOpenText, TrendingUp, Compass, MonitorSmartphone, Baby, Bra
 import AppFooter from './layout/AppFooter.vue'
 import TopNavbar from './layout/TopNavbar.vue'
 import FeaturedBooksHero from './FeaturedBooksHero.vue'
-import { getBooks, getFileUrl } from '../services/api'
+import { getBooks, getFeaturedCategories, getFileUrl } from '../services/api'
 import { authUser } from '../stores/auth'
 import gsap from 'gsap'
 
@@ -16,19 +16,25 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const searchInput = ref('')
 const isSearchFocused = ref(false)
+const featuredCategories = ref([])
+const categoryErrorMessage = ref('')
 let motionContext
 let homeMotionStarted = false
 
-const featuredCategories = [
-  { name: 'Văn học', icon: BookOpenText, count: 124 },
-  { name: 'Kinh tế', icon: TrendingUp, count: 85 },
-  { name: 'Kỹ năng sống', icon: Compass, count: 64 },
-  { name: 'Công nghệ', icon: MonitorSmartphone, count: 42 },
-  { name: 'Thiếu nhi', icon: Baby, count: 96 },
-  { name: 'Trinh thám', icon: Search, count: 38 },
-  { name: 'Tâm lý', icon: BrainCircuit, count: 55 },
-  { name: 'Ngoại ngữ', icon: Languages, count: 72 },
-]
+const categoryIcons = {
+  'văn học': BookOpenText,
+  'kinh tế': TrendingUp,
+  'kỹ năng sống': Compass,
+  'công nghệ': MonitorSmartphone,
+  'thiếu nhi': Baby,
+  'trinh thám': Search,
+  'tâm lý': BrainCircuit,
+  'ngoại ngữ': Languages,
+}
+
+function getCategoryIcon(name) {
+  return categoryIcons[String(name ?? '').trim().toLocaleLowerCase('vi-VN')] ?? BookOpenText
+}
 
 // Resolve details and map from editions
 const displayBooks = computed(() =>
@@ -71,9 +77,20 @@ const displayBooks = computed(() =>
   }),
 )
 
-// In a real app, this should be sorted by a specific "Featured" score or fetched from a /api/books/featured endpoint.
-// For now, we simulate this by picking the first 8 books from the fetched catalog.
-const featuredBooks = computed(() => displayBooks.value.slice(0, 8))
+const activeCategory = ref('ALL')
+
+const featuredBooks = computed(() => {
+  if (activeCategory.value === 'ALL') {
+    return displayBooks.value.slice(0, 8)
+  }
+  return displayBooks.value
+    .filter(b => b.categories && b.categories.some(c => c.name === activeCategory.value))
+    .slice(0, 8)
+})
+
+function filterByCategory(name) {
+  activeCategory.value = activeCategory.value === name ? 'ALL' : name
+}
 
 function handleSearch(queryOverride) {
   const q = typeof queryOverride === 'string' ? queryOverride : searchInput.value.trim()
@@ -130,7 +147,8 @@ function formatPrice(price) {
 }
 
 function goToLibrary() {
-  router.push('/library')
+  const query = activeCategory.value === 'ALL' ? {} : { category: activeCategory.value }
+  router.push({ name: 'library', query })
 }
 
 function initHomeMotion() {
@@ -145,40 +163,30 @@ function initHomeMotion() {
   homeMotionStarted = true
 
   motionContext = gsap.context(() => {
-    // Premium spring physics feel for the Bento grid reveal
-    const timeline = gsap.timeline({
-      defaults: {
-        duration: 0.8,
-        ease: 'back.out(1.2)', // Simulated spring
-      },
-    })
-
-    // Staggered waterfall reveal
-    timeline.from('.bento-item', {
-      y: 40,
-      opacity: 0,
-      scale: 0.98,
-      stagger: 0.1,
-      duration: 1
-    })
-    
-    // Add perpetual float to the featured book cover
-    gsap.to('.featured-cover-wrapper', {
-      y: -8,
-      duration: 3,
-      ease: 'sine.inOut',
-      yoyo: true,
-      repeat: -1,
-      delay: 1 // Start after entrance
-    })
+    // GSAP animations temporarily removed to prevent 'target not found' console warnings
+    // during fast HMR updates. They can be re-enabled later if needed.
 
   }, pageRoot.value)
+}
+
+async function loadFeaturedCategories() {
+  try {
+    const data = await getFeaturedCategories()
+    featuredCategories.value = data.map(cat => ({
+      ...cat,
+      icon: getCategoryIcon(cat.name)
+    }))
+  } catch (error) {
+    categoryErrorMessage.value = 'Không thể tải thể loại nổi bật.'
+    console.error('Failed to load featured categories:', error)
+  }
 }
 
 onMounted(async () => {
   await nextTick()
   initHomeMotion()
   loadBooks()
+  loadFeaturedCategories()
 })
 
 onUnmounted(() => {
@@ -217,19 +225,20 @@ onUnmounted(() => {
           <div class="section-header">
             <h2 class="section-title">Thể loại nổi bật</h2>
           </div>
-          <div class="categories-grid">
+          <div class="categories-bento-grid" :class="{ 'has-active': activeCategory !== 'ALL' }">
             <div 
               v-for="cat in featuredCategories" 
               :key="cat.name" 
-              class="category-card"
-              @click="handleSearch(cat.name)"
+              class="category-bento-card"
+              :class="{ 'is-active': activeCategory === cat.name }"
+              @click="filterByCategory(cat.name)"
             >
               <div class="category-icon-wrapper">
                 <component :is="cat.icon" :size="28" stroke-width="1.5" class="category-icon" />
               </div>
               <div class="category-info">
                 <h4 class="category-name">{{ cat.name }}</h4>
-                <p class="category-count">{{ cat.count }} sách</p>
+                <p class="category-count">{{ cat.bookCount }} sách</p>
               </div>
             </div>
           </div>
@@ -652,32 +661,88 @@ onUnmounted(() => {
   opacity: 0.7;
 }
 
-/* --- Categories Grid --- */
-.categories-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-}
-
-.category-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  padding: 1.5rem;
+/* --- Categories Horizontal Carousel --- */
+.categories-bento-grid {
   display: flex;
-  align-items: center;
   gap: 1.25rem;
+  
+  /* Horizontal Scroll */
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Padding to prevent hover shadow clipping */
+  padding: 1.5rem 1rem 3rem 1rem;
+  margin: -1.5rem -1rem -3rem -1rem;
+  
+  /* Hide scrollbar */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.categories-bento-grid::-webkit-scrollbar {
+  display: none;
+}
+
+/* Base Bento Card Style */
+.category-bento-card {
+  flex: 0 0 240px; /* Fixed width for horizontal scrolling */
+  scroll-snap-align: start;
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 2rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.02);
 }
 
-.category-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px -6px rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.1);
+/* Group hover spotlight effect */
+.categories-bento-grid:hover .category-bento-card {
+  opacity: 0.75;
+  transform: scale(0.98);
 }
 
+/* Restores hovered card */
+.categories-bento-grid .category-bento-card:hover {
+  opacity: 1 !important;
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 30px 60px -15px rgba(0,0,0,0.1), 0 4px 20px rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.15);
+  filter: grayscale(0%);
+  z-index: 10;
+}
+
+.category-bento-card:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* Active State Selection (When clicked) */
+.categories-bento-grid.has-active .category-bento-card:not(.is-active) {
+  opacity: 0.4;
+  filter: grayscale(80%);
+  transform: scale(0.96);
+}
+
+.categories-bento-grid.has-active .category-bento-card.is-active {
+  opacity: 1 !important;
+  filter: grayscale(0%);
+  border-color: #0f172a;
+  box-shadow: 0 15px 40px -10px rgba(15, 23, 42, 0.15);
+  transform: scale(1.02);
+}
+
+.categories-bento-grid.has-active .category-bento-card.is-active .category-icon-wrapper {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+/* Icon Wrapper */
 .category-icon-wrapper {
   display: flex;
   align-items: center;
@@ -690,7 +755,7 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-.category-card:hover .category-icon-wrapper {
+.category-bento-card:hover .category-icon-wrapper {
   background: #0f172a;
   color: #ffffff;
 }

@@ -54,53 +54,49 @@ function handleDeleteCategory(id) {
       </div>
     </div>
 
-    <!-- Data Table -->
-    <div class="table-container bento-item">
-      <table class="bento-table">
-        <thead>
-          <tr>
-            <th style="width: 60px;">ID</th>
-            <th>Tên danh mục</th>
-            <th>Đường dẫn (Slug)</th>
-            <th>Số lượng sách</th>
-            <th class="actions-col">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="category in categories" :key="category.id">
-            <td>
-              <span class="id-badge">#{{ category.id }}</span>
-            </td>
-            <td>
-              <div class="category-name">
-                <PhBookmarkSimple :size="20" color="#ec4899" weight="duotone" />
-                <strong>{{ category.name }}</strong>
-              </div>
-            </td>
-            <td>
-              <code class="slug-code">{{ category.slug }}</code>
-            </td>
-            <td>
-              <span class="count-badge">{{ category.bookCount }} tác phẩm</span>
-            </td>
-            <td class="actions-col">
-              <div class="action-buttons">
-                <button class="icon-btn edit" @click="handleEditCategory(category.id)" title="Chỉnh sửa">
-                  <PhPencilSimple :size="18" />
-                </button>
-                <button class="icon-btn danger" @click="handleDeleteCategory(category.id)" title="Xóa">
-                  <PhTrash :size="18" />
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="categories.length === 0">
-            <td colspan="5" class="empty-state">
-              <p>Chưa có danh mục nào.</p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Intelligent List -->
+    <div class="intelligent-list-container bento-item">
+      <div class="list-header">
+        <div style="width: 80px;">ID</div>
+        <div class="flex-2">Tên danh mục</div>
+        <div class="flex-2">Đường dẫn (Slug)</div>
+        <div class="flex-1">Số lượng sách</div>
+        <div class="actions-col" style="width: 100px; text-align: right;">Thao tác</div>
+      </div>
+      
+      <transition-group name="list-stagger" tag="div" class="list-body">
+        <div v-for="category in categories" :key="category.id" class="list-row">
+          <div style="width: 80px;">
+            <span class="id-badge">#{{ category.id }}</span>
+          </div>
+          <div class="flex-2">
+            <div class="category-name">
+              <PhBookmarkSimple :size="20" color="#ec4899" weight="duotone" />
+              <strong>{{ category.name }}</strong>
+            </div>
+          </div>
+          <div class="flex-2">
+            <code class="slug-code">{{ category.slug }}</code>
+          </div>
+          <div class="flex-1">
+            <span class="count-badge">{{ category.bookCount }} tác phẩm</span>
+          </div>
+          <div class="actions-col" style="width: 100px; justify-content: flex-end;">
+            <div class="action-buttons">
+              <button class="icon-btn edit magnetic-btn" @click="handleEditCategory(category.id)" title="Chỉnh sửa">
+                <PhPencilSimple :size="18" />
+              </button>
+              <button class="icon-btn danger magnetic-btn" @click="handleDeleteCategory(category.id)" title="Xóa">
+                <PhTrash :size="18" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="categories.length === 0" class="empty-state" key="empty">
+          <p>Chưa có danh mục nào.</p>
+        </div>
+      </transition-group>
     </div>
   </div>
 </template>
@@ -200,52 +196,76 @@ function handleDeleteCategory(id) {
   box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
 }
 
-/* Table */
-.table-container {
+/* Intelligent List */
+.intelligent-list-container {
   background: var(--bento-surface);
-  border-radius: 1.5rem;
+  border-radius: 2.5rem;
   border: 1px solid var(--bento-border);
-  box-shadow: 0 10px 30px -15px rgba(0,0,0,0.03);
+  box-shadow: var(--bento-shadow);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.bento-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.bento-table th {
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
   background: #fafafa;
-  padding: 1rem 1.5rem;
-  text-align: left;
+  border-bottom: 1px solid var(--bento-border);
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--bento-border);
 }
 
-.bento-table td {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--bento-border);
-  vertical-align: middle;
+.list-body {
+  display: flex;
+  flex-direction: column;
 }
 
-.bento-table tr:last-child td {
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--bento-border);
+  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.list-row:last-child {
   border-bottom: none;
 }
 
-.bento-table tr:hover td {
+.list-row:hover {
   background: #fdfdfd;
+}
+
+.flex-1 { flex: 1; min-width: 0; }
+.flex-2 { flex: 2; min-width: 0; }
+.actions-col { display: flex; align-items: center; gap: 0.75rem; }
+
+/* List Transition */
+.list-stagger-enter-active,
+.list-stagger-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.list-stagger-enter-from,
+.list-stagger-leave-to {
+  opacity: 0;
+  transform: translateY(15px);
 }
 
 .id-badge {
   font-family: monospace;
   color: var(--text-muted);
   background: #f4f4f5;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .category-name {
@@ -254,47 +274,46 @@ function handleDeleteCategory(id) {
   gap: 0.75rem;
 }
 
+.category-name strong {
+  font-size: 1.05rem;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
 .slug-code {
-  background: #f4f4f5;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.5rem;
   font-family: monospace;
-  font-size: 0.85rem;
-  color: #52525b;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
 }
 
 .count-badge {
-  background: #f4f4f5;
-  color: var(--text-muted);
-  padding: 0.25rem 0.75rem;
-  border-radius: 99px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
-}
-
-.actions-col {
-  text-align: right;
-  width: 120px;
+  color: #10b981;
+  background: #d1fae5;
+  padding: 0.3rem 0.75rem;
+  border-radius: 99px;
 }
 
 .action-buttons {
   display: flex;
-  justify-content: flex-end;
   gap: 0.5rem;
 }
 
 .icon-btn {
+  background: transparent;
+  border: none;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
   color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .icon-btn:hover {
@@ -302,19 +321,20 @@ function handleDeleteCategory(id) {
   color: var(--text-main);
 }
 
-.icon-btn.edit:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+.icon-btn.danger:hover {
+  background: #fef2f2;
+  color: #ef4444;
 }
 
-.icon-btn.danger:hover {
-  color: #ef4444;
-  background: #fef2f2;
+/* Magnetic physics simulation */
+.magnetic-btn:active {
+  transform: scale(0.92);
 }
 
 .empty-state {
+  padding: 4rem 2rem;
   text-align: center;
-  padding: 3rem;
   color: var(--text-muted);
+  font-weight: 500;
 }
 </style>

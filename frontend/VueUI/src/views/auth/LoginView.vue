@@ -1,9 +1,43 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PhArrowLeft, PhSignIn } from '@phosphor-icons/vue'
 
-import { login } from '../../stores/auth'
+import { login, loginWithGoogle } from '../../stores/auth'
+
+const GOOGLE_SCRIPT_ID = 'google-identity-services'
+let googleScriptPromise
+
+function loadGoogleIdentityScript() {
+  if (window.google?.accounts?.id) return Promise.resolve(window.google)
+  if (googleScriptPromise) return googleScriptPromise
+
+  googleScriptPromise = new Promise((resolve, reject) => {
+    const existingScript = document.getElementById(GOOGLE_SCRIPT_ID)
+    const handleLoad = () => resolve(window.google)
+    const handleError = () => reject(new Error('Không thể tải dịch vụ đăng nhập Google.'))
+
+    if (existingScript) {
+      existingScript.addEventListener('load', handleLoad, { once: true })
+      existingScript.addEventListener('error', handleError, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.id = GOOGLE_SCRIPT_ID
+    script.src = 'https://accounts.google.com/gsi/client?hl=vi'
+    script.async = true
+    script.defer = true
+    script.addEventListener('load', handleLoad, { once: true })
+    script.addEventListener('error', handleError, { once: true })
+    document.head.appendChild(script)
+  }).catch((error) => {
+    googleScriptPromise = undefined
+    throw error
+  })
+
+  return googleScriptPromise
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +49,13 @@ const form = reactive({
 
 const errorMessage = ref('')
 const isSubmitting = ref(false)
+const isGoogleSubmitting = ref(false)
+const googleButton = ref(null)
+const googleUnavailable = ref(false)
+const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '').trim()
+let isUnmounted = false
+
+const isBusy = computed(() => isSubmitting.value || isGoogleSubmitting.value)
 
 const successMessage = computed(() =>
   route.query.registered === '1' ? 'Đăng ký thành công, vui lòng đăng nhập.' : '',
@@ -58,6 +99,68 @@ async function handleSubmit() {
     isSubmitting.value = false
   }
 }
+
+async function handleGoogleCredential(response) {
+  if (!response?.credential || isGoogleSubmitting.value) return
+
+  errorMessage.value = ''
+  isGoogleSubmitting.value = true
+
+  try {
+    const session = await loginWithGoogle(response.credential)
+    if (!isUnmounted) await router.replace(resolveTarget(session.user))
+  } catch (error) {
+    if (!isUnmounted) {
+      errorMessage.value =
+        error instanceof TypeError
+          ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'
+          : error instanceof Error
+            ? error.message
+            : 'Đăng nhập Google thất bại. Vui lòng thử lại.'
+    }
+  } finally {
+    if (!isUnmounted) isGoogleSubmitting.value = false
+  }
+}
+
+onMounted(async () => {
+  if (!googleClientId) {
+    googleUnavailable.value = true
+    return
+  }
+
+  try {
+    const google = await loadGoogleIdentityScript()
+    if (isUnmounted || !googleButton.value) return
+
+    google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    })
+    google.accounts.id.renderButton(googleButton.value, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+      locale: 'vi',
+      width: Math.floor(Math.min(googleButton.value.clientWidth || 320, 380)),
+    })
+  } catch (error) {
+    if (!isUnmounted) {
+      googleUnavailable.value = true
+      errorMessage.value = error instanceof Error ? error.message : 'Không thể tải đăng nhập Google.'
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  isUnmounted = true
+  if (googleButton.value) googleButton.value.replaceChildren()
+})
 </script>
 
 <template>
@@ -99,7 +202,7 @@ async function handleSubmit() {
                 type="email"
                 placeholder="you@example.com"
                 required
-                :disabled="isSubmitting"
+                :disabled="isBusy"
               />
             </div>
 
@@ -111,7 +214,7 @@ async function handleSubmit() {
                 type="password"
                 placeholder="••••••••"
                 required
-                :disabled="isSubmitting"
+                :disabled="isBusy"
               />
             </div>
 
@@ -127,13 +230,25 @@ async function handleSubmit() {
               {{ errorMessage }}
             </div>
 
-            <button class="submit-btn" type="submit" :disabled="isSubmitting">
+            <button class="submit-btn" type="submit" :disabled="isBusy">
               <span v-if="isSubmitting" class="spinner"></span>
               <template v-else>
                 Đăng nhập
                 <PhSignIn :size="20" weight="bold" />
               </template>
             </button>
+
+            <div class="auth-divider" aria-hidden="true">
+              <span>hoặc</span>
+            </div>
+
+            <div class="google-login-area" :class="{ 'is-loading': isGoogleSubmitting }">
+              <div ref="googleButton" class="google-button"></div>
+              <span v-if="isGoogleSubmitting" class="google-loading">Đang đăng nhập với Google…</span>
+              <span v-else-if="googleUnavailable" class="google-config-message">
+                Đăng nhập Google chưa được cấu hình.
+              </span>
+            </div>
           </form>
 
           <p class="auth-redirect">
@@ -392,6 +507,54 @@ async function handleSubmit() {
 .submit-btn:disabled {
   opacity: 0.7;
   cursor: wait;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: #e5e7eb;
+}
+
+.google-login-area {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.google-login-area.is-loading .google-button {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.google-button {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.google-button :deep(iframe) {
+  max-width: 100% !important;
+}
+
+.google-loading,
+.google-config-message {
+  color: #6b7280;
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 /* Spinner */

@@ -26,6 +26,11 @@ export async function fetchCartItemCount() {
     const cart = await getCart()
     state.itemCount = cart?.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0
   } catch (err) {
+    // If the error is 401 Unauthorized, it just means the user's session is expired or they are not logged in.
+    if (err?.status === 401) {
+      state.itemCount = 0
+      return
+    }
     console.error('Failed to fetch cart item count', err)
   }
 }
