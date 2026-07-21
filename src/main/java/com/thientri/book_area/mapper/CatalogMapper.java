@@ -1,7 +1,12 @@
 package com.thientri.book_area.mapper;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.stereotype.Component;
 
@@ -21,9 +26,11 @@ import com.thientri.book_area.service.minio.MinioService;
 public class CatalogMapper {
 
     private final MinioService minioService;
+    private final ObjectMapper objectMapper;
 
-    public CatalogMapper(MinioService minioService) {
+    public CatalogMapper(MinioService minioService, ObjectMapper objectMapper) {
         this.minioService = minioService;
+        this.objectMapper = objectMapper;
     }
 
     // ==========================================
@@ -49,12 +56,24 @@ public class CatalogMapper {
                         
                 .authorNames(book.getAuthors() == null ? Collections.emptyList() : 
                         book.getAuthors().stream().map(Author::getName).collect(Collectors.toList()))
+                .imageUrls(readImageUrls(book.getImages()))
                         
                 // Mapping danh sách các phiên bản (Variants)
                 .editions(book.getEditions() == null ? Collections.emptyList() : 
                         book.getEditions().stream().map(this::toEditionResponse).collect(Collectors.toList()))
                         
                 .build();
+    }
+
+    private List<String> readImageUrls(String images) {
+        if (images == null || images.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(images, new TypeReference<List<String>>() {});
+        } catch (JsonProcessingException exception) {
+            return List.of(images);
+        }
     }
 
     // ==========================================

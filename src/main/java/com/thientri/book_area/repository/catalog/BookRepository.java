@@ -45,5 +45,31 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 			@Param("format") String format,
 			Pageable pageable);
 
+	@Query(value = """
+			SELECT DISTINCT book
+			FROM Book book
+			LEFT JOIN book.authors author
+			LEFT JOIN book.categories category
+			WHERE (:search IS NULL
+				OR LOWER(book.title) LIKE LOWER(CONCAT('%', :search, '%'))
+				OR LOWER(author.name) LIKE LOWER(CONCAT('%', :search, '%')))
+			  AND (:category IS NULL OR LOWER(category.name) = LOWER(:category))
+			  AND (:isActive IS NULL OR book.isActive = :isActive)
+			""", countQuery = """
+			SELECT COUNT(DISTINCT book)
+			FROM Book book
+			LEFT JOIN book.authors author
+			LEFT JOIN book.categories category
+			WHERE (:search IS NULL
+				OR LOWER(book.title) LIKE LOWER(CONCAT('%', :search, '%'))
+				OR LOWER(author.name) LIKE LOWER(CONCAT('%', :search, '%')))
+			  AND (:category IS NULL OR LOWER(category.name) = LOWER(:category))
+			  AND (:isActive IS NULL OR book.isActive = :isActive)
+			""")
+	Page<Book> findAdminCatalog(@Param("search") String search,
+			@Param("category") String category,
+			@Param("isActive") Boolean isActive,
+			Pageable pageable);
+
 	long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime start, LocalDateTime end);
 }
