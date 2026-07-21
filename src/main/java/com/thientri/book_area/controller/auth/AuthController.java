@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.thientri.book_area.dto.request.user.LoginRequest;
+import com.thientri.book_area.dto.request.user.GoogleLoginRequest;
 import com.thientri.book_area.dto.request.user.RegisterRequest;
 import com.thientri.book_area.dto.request.user.UpdateProfileRequest;
 import com.thientri.book_area.dto.response.user.AuthResponse;
@@ -42,6 +43,12 @@ public class AuthController {
 	public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
 		AuthResponse response = authService.login(request);
 		return ResponseEntity.ok(ApiResponse.success(response));
+	}
+
+	@PostMapping("/google")
+	public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(
+			@Valid @RequestBody GoogleLoginRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(authService.loginWithGoogle(request)));
 	}
 
 	@GetMapping("/me")

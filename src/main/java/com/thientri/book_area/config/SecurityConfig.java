@@ -71,7 +71,7 @@ public class SecurityConfig {
 						.requestMatchers("/data/**", "/error").permitAll()
 						.requestMatchers(HttpMethod.GET, "/", "/css/**", "/js/**", "/images/**", "/favicon.ico")
 						.permitAll()
-						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/refresh")
+						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/google", "/api/auth/register", "/api/auth/refresh")
 						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**", "/api/categories",
 								"/api/categories/**", "/api/public/**", "/api/files/download")

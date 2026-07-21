@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler {
 		String message = exception.getBindingResult().getFieldErrors().stream().findFirst()
 				.map(error -> error.getDefaultMessage()).orElse("Dữ liệu gửi lên không hợp lệ.");
 		return error(HttpStatus.BAD_REQUEST, message);
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ApiResponse<Void>> handleUnreadableRequest(HttpMessageNotReadableException exception,
+			HttpServletRequest request) {
+		return error(HttpStatus.BAD_REQUEST, "Dữ liệu gửi lên không đúng định dạng.");
 	}
 
 	@ExceptionHandler(BadRequestException.class)

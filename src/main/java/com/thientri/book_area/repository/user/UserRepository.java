@@ -11,6 +11,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 	// Tìm người dùng bằng email (dùng cho đăng nhập)
 	Optional<User> findByEmail(String email);
+	Optional<User> findByEmailIgnoreCase(String email);
 
 	// Kiểm tra xem email hoặc sđt đã tồn tại chưa (dùng cho đăng ký)
 	boolean existsByEmail(String email);

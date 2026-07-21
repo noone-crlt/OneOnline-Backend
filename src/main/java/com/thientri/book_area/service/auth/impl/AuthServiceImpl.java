@@ -2,6 +2,7 @@ package com.thientri.book_area.service.auth.impl;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -11,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.thientri.book_area.dto.request.user.GoogleLoginRequest;
 import com.thientri.book_area.dto.request.user.LoginRequest;
 import com.thientri.book_area.dto.request.user.RegisterRequest;
 import com.thientri.book_area.dto.request.user.UpdateProfileRequest;
@@ -25,6 +27,8 @@ import com.thientri.book_area.repository.user.RefreshTokenRepository;
 import com.thientri.book_area.repository.user.RoleRepository;
 import com.thientri.book_area.repository.user.UserRepository;
 import com.thientri.book_area.security.JwtService;
+import com.thientri.book_area.service.auth.GoogleIdentityService;
+import com.thientri.book_area.service.auth.GoogleIdentityService.GoogleUserInfo;
 import com.thientri.book_area.service.auth.IAuthService;
 
 import lombok.RequiredArgsConstructor;
@@ -41,6 +45,7 @@ public class AuthServiceImpl implements IAuthService {
 	private final JwtService jwtService; // Thêm JWT Service
 	private final AuthenticationManager authenticationManager; // Thêm Auth Manager
 	private final UserMapper userMapper; // Thêm Mapper
+	private final GoogleIdentityService googleIdentityService;
 
 	@Override
 	@Transactional // Đảm bảo tính toàn vẹn: Lỗi ở bất kỳ dòng nào thì rollback toàn bộ
@@ -82,19 +87,22 @@ public class AuthServiceImpl implements IAuthService {
 		User user = userRepository.findByEmail(request.getEmail())
 				.orElseThrow(() -> new BadRequestException("Tài khoản không tồn tại."));
 
-		// Kiểm tra xem user có bị xóa mềm hay ban không
-		if (!user.isEnabled() || !user.isAccountNonLocked()) {
-			throw new BadRequestException("Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa.");
+		return createSession(user);
+	}
+
+	@Override
+	@Transactional
+	public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
+		GoogleUserInfo googleUser = googleIdentityService.verify(request.getCredential());
+		User user = userRepository.findByEmailIgnoreCase(googleUser.email())
+				.orElseGet(() -> createGoogleUser(googleUser));
+
+		if ((user.getFullName() == null || user.getFullName().isBlank()) && !googleUser.fullName().isBlank()) {
+			user.setFullName(googleUser.fullName());
+			user = userRepository.save(user);
 		}
 
-		// 3. Tạo Access Token (Tuổi thọ ngắn)
-		String accessToken = jwtService.generateToken(user);
-
-		// 4. Sinh Refresh Token (Tuổi thọ dài) và lưu vào Database
-		String refreshToken = generateAndSaveRefreshToken(user);
-
-		// 5. Đóng gói dữ liệu trả về Frontend
-		return userMapper.toAuthResponse(user, accessToken, refreshToken);
+		return createSession(user);
 	}
 
 	// Helper method xử lý tạo Refresh Token an toàn
@@ -124,5 +132,28 @@ public class AuthServiceImpl implements IAuthService {
 		refreshTokenRepository.save(refreshToken);
 
 		return tokenString;
+	}
+
+	private User createGoogleUser(GoogleUserInfo googleUser) {
+		Role userRole = roleRepository.findByName("USER")
+				.orElseThrow(() -> new IllegalStateException("Không tìm thấy quyền USER mặc định."));
+
+		String fullName = googleUser.fullName().isBlank()
+				? googleUser.email().substring(0, googleUser.email().indexOf('@'))
+				: googleUser.fullName();
+
+		return userRepository.save(User.builder().email(googleUser.email().toLowerCase(Locale.ROOT))
+				.password(passwordEncoder.encode(UUID.randomUUID().toString())).fullName(fullName)
+				.status(UserStatus.ACTIVE).roles(new HashSet<>(Set.of(userRole))).build());
+	}
+
+	private AuthResponse createSession(User user) {
+		if (!user.isEnabled() || !user.isAccountNonLocked()) {
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa hoặc vô hiệu hóa.");
+		}
+
+		String accessToken = jwtService.generateToken(user);
+		String refreshToken = generateAndSaveRefreshToken(user);
+		return userMapper.toAuthResponse(user, accessToken, refreshToken);
 	}
 }
