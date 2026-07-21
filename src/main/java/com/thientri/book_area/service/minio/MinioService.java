@@ -138,7 +138,7 @@ public class MinioService {
         // Generate object name if needed
         String finalObjectName = objectName;
         if (finalObjectName == null || finalObjectName.isBlank() || finalObjectName.endsWith("/")) {
-            String folder = (finalObjectName != null && !finalObjectName.isBlank()) ? finalObjectName : "covers/google-books/";
+            String folder = (finalObjectName != null && !finalObjectName.isBlank()) ? finalObjectName : "sach/anhbia/google-books/";
             finalObjectName = folder + UUID.randomUUID().toString() + ext;
         }
 

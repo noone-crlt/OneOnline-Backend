@@ -273,7 +273,7 @@ public class BookServiceImpl implements IBookService {
         if (!List.of("image/jpeg", "image/png", "image/webp").contains(contentType)) {
             throw new BadRequestException("Ảnh bìa phải có định dạng JPG, PNG hoặc WebP.");
         }
-        String objectName = minioService.uploadFile(coverFile, "covers");
+        String objectName = minioService.uploadFile(coverFile, "sach/anhbia");
         book.setImages(writeImageUrls(List.of(objectName)));
     }
 

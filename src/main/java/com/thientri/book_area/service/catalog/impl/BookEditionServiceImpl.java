@@ -60,7 +60,7 @@ public class BookEditionServiceImpl implements IBookEditionService {
             // 3. Xử lý Upload Ảnh Bìa (Dùng chung cho mọi định dạng nếu có)
             String coverObjectName = null;
             if (coverFile != null && !coverFile.isEmpty()) {
-                coverObjectName = minioService.uploadFile(coverFile, "covers");
+                coverObjectName = minioService.uploadFile(coverFile, "sach/anhbia");
                 uploadedObjects.add(coverObjectName);
             }
 
@@ -185,7 +185,7 @@ public class BookEditionServiceImpl implements IBookEditionService {
                 if (edition.getCoverObjectName() != null) {
                     oldCoverToDelete = edition.getCoverObjectName();
                 }
-                String newCover = minioService.uploadFile(newCoverFile, "covers");
+                String newCover = minioService.uploadFile(newCoverFile, "sach/anhbia");
                 uploadedObjects.add(newCover);
                 edition.setCoverObjectName(newCover);
             }
