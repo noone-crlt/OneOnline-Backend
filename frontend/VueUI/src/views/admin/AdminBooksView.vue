@@ -5,7 +5,6 @@ import {
   PhPlus,
   PhPencilSimple,
   PhTrash,
-  PhImageSquare,
   PhX,
 } from '@phosphor-icons/vue'
 import {
@@ -32,6 +31,7 @@ const isModalOpen = ref(false)
 const editingBookId = ref(null)
 const coverFile = ref(null)
 const coverPreview = ref('')
+const failedCoverIds = ref(new Set())
 const formOptions = ref({ publishers: [], authors: [], categories: [] })
 let searchTimer = null
 
@@ -62,7 +62,15 @@ function toStatusFilter() {
 
 function getCoverUrl(book) {
   const objectName = book.imageUrls?.[0]
-  return objectName ? getFileUrl(objectName) : ''
+  return objectName && !failedCoverIds.value.has(book.id) ? getFileUrl(objectName) : ''
+}
+
+function getCoverInitials(title) {
+  return String(title ?? 'S').trim().slice(0, 1).toUpperCase()
+}
+
+function markCoverAsUnavailable(bookId) {
+  failedCoverIds.value = new Set([...failedCoverIds.value, bookId])
 }
 
 function resetForm() {
@@ -93,6 +101,7 @@ async function loadBooks() {
       isActive: toStatusFilter(),
     })
     books.value = Array.isArray(payload?.content) ? payload.content : []
+    failedCoverIds.value = new Set()
     totalBooks.value = Number(payload?.totalElements ?? books.value.length)
   } catch (error) {
     books.value = []
@@ -275,67 +284,70 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
       </div>
     </div>
 
-    <!-- Data Table -->
-    <div class="table-container bento-item">
-      <table class="bento-table">
-        <thead>
-          <tr>
-            <th>Bìa sách</th>
-            <th>Tên sách</th>
-            <th>Tác giả</th>
-            <th>Thể loại</th>
-            <th>Trạng thái</th>
-            <th>Lượt xem</th>
-            <th class="actions-col">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="isLoading">
-            <td colspan="7" class="empty-state"><p>Đang tải danh sách sách…</p></td>
-          </tr>
-          <tr v-else v-for="book in books" :key="book.id">
-            <td>
-              <div class="book-cover">
-                <img v-if="getCoverUrl(book)" :src="getCoverUrl(book)" :alt="`Bìa sách ${book.title}`" />
-                <PhImageSquare v-else :size="24" color="#a1a1aa" />
-              </div>
-            </td>
-            <td>
-              <strong>{{ book.title }}</strong>
-            </td>
-            <td>{{ book.authorNames?.join(', ') || 'Chưa cập nhật' }}</td>
-            <td>
-              <span class="badge">{{ book.categoryNames?.join(', ') || 'Chưa phân loại' }}</span>
-            </td>
-            <td>
-              <span class="status-badge" :class="book.isActive ? 'success' : 'warning'">
-                {{ book.isActive ? 'Đang hiển thị' : 'Đã ẩn' }}
-              </span>
-            </td>
-            <td>—</td>
-            <td class="actions-col">
-              <div class="action-buttons">
-                <button class="icon-btn edit" @click="openEditModal(book.id)" title="Chỉnh sửa">
-                  <PhPencilSimple :size="18" />
-                </button>
-                <button
-                  class="icon-btn"
-                  :class="book.isActive ? 'danger' : 'info'"
-                  @click="toggleBookStatus(book)"
-                  :title="book.isActive ? 'Ẩn sách' : 'Hiển thị lại sách'"
-                >
-                  <PhTrash :size="18" />
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="!isLoading && books.length === 0">
-            <td colspan="7" class="empty-state">
-              <p>{{ errorMessage || 'Không tìm thấy sách phù hợp.' }}</p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Intelligent List -->
+    <div class="intelligent-list-container bento-item">
+      <div class="list-header">
+        <div style="width: 64px;">Bìa sách</div>
+        <div class="flex-2">Tên sách</div>
+        <div class="flex-2">Tác giả</div>
+        <div class="flex-1">Thể loại</div>
+        <div style="width: 120px;">Trạng thái</div>
+        <div class="actions-col" style="width: 100px; justify-content: flex-end;">Thao tác</div>
+      </div>
+      
+      <transition-group name="list-stagger" tag="div" class="list-body">
+        <div v-if="isLoading" class="empty-state" key="loading">
+          <p>Đang tải danh sách sách…</p>
+        </div>
+        
+        <div v-else v-for="book in books" :key="book.id" class="list-row">
+          <div style="width: 64px;">
+              <div class="book-cover" :class="{ 'book-cover--missing': !getCoverUrl(book) }">
+                <img
+                  v-if="getCoverUrl(book)"
+                  :src="getCoverUrl(book)"
+                  :alt="`Bìa sách ${book.title}`"
+                  @error="markCoverAsUnavailable(book.id)"
+                />
+                <span v-else class="book-cover-fallback" aria-hidden="true">{{ getCoverInitials(book.title) }}</span>
+            </div>
+          </div>
+          <div class="flex-2">
+            <strong style="color: var(--text-main); font-size: 1.05rem; display: block; margin-bottom: 0.25rem;">{{ book.title }}</strong>
+            <span style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">#{{ book.id }}</span>
+          </div>
+          <div class="flex-2">
+            <span style="color: var(--text-muted); font-size: 0.95rem;">{{ book.authorNames?.join(', ') || 'Chưa cập nhật' }}</span>
+          </div>
+          <div class="flex-1">
+            <span class="badge">{{ book.categoryNames?.join(', ') || 'Chưa phân loại' }}</span>
+          </div>
+          <div style="width: 120px;">
+            <span class="status-badge" :class="book.isActive ? 'success' : 'warning'">
+              {{ book.isActive ? 'Đang hiển thị' : 'Đã ẩn' }}
+            </span>
+          </div>
+          <div class="actions-col" style="width: 100px; justify-content: flex-end;">
+            <div class="action-buttons">
+              <button class="icon-btn edit magnetic-btn" @click="openEditModal(book.id)" title="Chỉnh sửa">
+                <PhPencilSimple :size="18" />
+              </button>
+              <button
+                class="icon-btn magnetic-btn"
+                :class="book.isActive ? 'danger' : 'info'"
+                @click="toggleBookStatus(book)"
+                :title="book.isActive ? 'Ẩn sách' : 'Hiển thị lại sách'"
+              >
+                <PhTrash :size="18" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="!isLoading && books.length === 0" class="empty-state" key="empty">
+          <p>{{ errorMessage || 'Không tìm thấy sách phù hợp.' }}</p>
+        </div>
+      </transition-group>
     </div>
 
     <div v-if="books.length > 0" class="pagination">
@@ -533,62 +545,110 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   border-color: #d4d4d8;
 }
 
-/* Table */
-.table-container {
+/* Intelligent List */
+.intelligent-list-container {
   background: var(--bento-surface);
-  border-radius: 1.5rem;
+  border-radius: 2.5rem;
   border: 1px solid var(--bento-border);
-  box-shadow: 0 10px 30px -15px rgba(0,0,0,0.03);
+  box-shadow: var(--bento-shadow);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.bento-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.bento-table th {
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
   background: #fafafa;
-  padding: 1rem 1.5rem;
-  text-align: left;
+  border-bottom: 1px solid var(--bento-border);
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--bento-border);
 }
 
-.bento-table td {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--bento-border);
-  vertical-align: middle;
+.list-body {
+  display: flex;
+  flex-direction: column;
 }
 
-.bento-table tr:last-child td {
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--bento-border);
+  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.list-row:last-child {
   border-bottom: none;
 }
 
-.bento-table tr:hover td {
+.list-row:hover {
   background: #fdfdfd;
 }
 
+.flex-1 { flex: 1; min-width: 0; }
+.flex-2 { flex: 2; min-width: 0; }
+.actions-col { display: flex; align-items: center; gap: 0.75rem; }
+
+/* List Transition */
+.list-stagger-enter-active,
+.list-stagger-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.list-stagger-enter-from,
+.list-stagger-leave-to {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
 .book-cover {
-  width: 48px;
-  height: 64px;
-  border-radius: 0.5rem;
+  width: 52px;
+  height: 72px;
+  position: relative;
   overflow: hidden;
-  background: #f4f4f5;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 0.65rem;
+  background: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 18px -14px rgba(15, 23, 42, 0.45);
 }
 
 .book-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-table tr:hover .book-cover img {
+  transform: scale(1.05);
+}
+
+.book-cover--missing {
+  background:
+    linear-gradient(145deg, rgba(226, 232, 240, 0.88), rgba(248, 250, 252, 0.98));
+}
+
+.book-cover-fallback {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 50%;
+  color: #475569;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .badge {
@@ -617,29 +677,22 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   color: #d97706;
 }
 
-.actions-col {
-  text-align: right;
-  width: 120px;
-}
-
 .action-buttons {
   display: flex;
-  justify-content: flex-end;
   gap: 0.5rem;
 }
 
 .icon-btn {
+  background: transparent;
+  border: none;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
   color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .icon-btn:hover {
@@ -647,9 +700,9 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   color: var(--text-main);
 }
 
-.icon-btn.edit:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+.icon-btn.danger:hover {
+  background: #fef2f2;
+  color: #ef4444;
 }
 
 .icon-btn.info:hover {
@@ -657,9 +710,14 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   background: #f5f3ff;
 }
 
-.icon-btn.danger:hover {
-  color: #ef4444;
-  background: #fef2f2;
+.icon-btn.edit:hover {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+/* Magnetic physics simulation */
+.magnetic-btn:active {
+  transform: scale(0.92);
 }
 
 .empty-state {

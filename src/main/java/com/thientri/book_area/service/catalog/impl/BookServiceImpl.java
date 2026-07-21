@@ -28,6 +28,7 @@ import com.thientri.book_area.exception.ResourceNotFoundException;
 import com.thientri.book_area.mapper.CatalogMapper;
 import com.thientri.book_area.model.catalog.Author;
 import com.thientri.book_area.model.catalog.Book;
+import com.thientri.book_area.model.catalog.BookEdition;
 
 import com.thientri.book_area.model.catalog.Category;
 import com.thientri.book_area.model.catalog.Publisher;
@@ -277,13 +278,22 @@ public class BookServiceImpl implements IBookService {
     }
 
     private List<String> readImageUrls(Book book) {
-        if (book.getImages() == null || book.getImages().isBlank()) {
-            return Collections.emptyList();
-        }
+        List<String> bookImages = readStoredImageUrls(book.getImages());
+        if (!bookImages.isEmpty()) return bookImages;
+
+        return book.getEditions().stream()
+                .map(BookEdition::getCoverObjectName)
+                .filter(objectName -> objectName != null && !objectName.isBlank())
+                .limit(1)
+                .toList();
+    }
+
+    private List<String> readStoredImageUrls(String images) {
+        if (images == null || images.isBlank()) return Collections.emptyList();
         try {
-            return objectMapper.readValue(book.getImages(), new TypeReference<List<String>>() {});
+            return objectMapper.readValue(images, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException exception) {
-            return List.of(book.getImages());
+            return List.of(images);
         }
     }
 

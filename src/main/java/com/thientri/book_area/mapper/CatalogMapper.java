@@ -56,7 +56,7 @@ public class CatalogMapper {
                         
                 .authorNames(book.getAuthors() == null ? Collections.emptyList() : 
                         book.getAuthors().stream().map(Author::getName).collect(Collectors.toList()))
-                .imageUrls(readImageUrls(book.getImages()))
+                .imageUrls(readImageUrls(book))
                         
                 // Mapping danh sách các phiên bản (Variants)
                 .editions(book.getEditions() == null ? Collections.emptyList() : 
@@ -65,15 +65,25 @@ public class CatalogMapper {
                 .build();
     }
 
-    private List<String> readImageUrls(String images) {
+    private List<String> readImageUrls(Book book) {
+        String images = book.getImages();
         if (images == null || images.isBlank()) {
-            return Collections.emptyList();
+            return getEditionCover(book);
         }
         try {
             return objectMapper.readValue(images, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException exception) {
             return List.of(images);
         }
+    }
+
+    private List<String> getEditionCover(Book book) {
+        if (book.getEditions() == null) return Collections.emptyList();
+        return book.getEditions().stream()
+                .map(BookEdition::getCoverObjectName)
+                .filter(objectName -> objectName != null && !objectName.isBlank())
+                .limit(1)
+                .toList();
     }
 
     // ==========================================
