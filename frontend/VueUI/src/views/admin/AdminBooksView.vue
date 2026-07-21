@@ -287,12 +287,12 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
     <!-- Intelligent List -->
     <div class="intelligent-list-container bento-item">
       <div class="list-header">
-        <div style="width: 64px;">Bìa sách</div>
+        <div style="width: 64px; flex-shrink: 0;">Bìa sách</div>
         <div class="flex-2">Tên sách</div>
         <div class="flex-2">Tác giả</div>
         <div class="flex-1">Thể loại</div>
-        <div style="width: 120px;">Trạng thái</div>
-        <div class="actions-col" style="width: 100px; justify-content: flex-end;">Thao tác</div>
+        <div style="width: 120px; flex-shrink: 0;">Trạng thái</div>
+        <div class="actions-col" style="width: 100px; flex-shrink: 0; justify-content: flex-end;">Thao tác</div>
       </div>
       
       <transition-group name="list-stagger" tag="div" class="list-body">
@@ -301,7 +301,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         </div>
         
         <div v-else v-for="book in books" :key="book.id" class="list-row">
-          <div style="width: 64px;">
+          <div style="width: 64px; flex-shrink: 0;">
               <div class="book-cover" :class="{ 'book-cover--missing': !getCoverUrl(book) }">
                 <img
                   v-if="getCoverUrl(book)"
@@ -312,17 +312,17 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
                 <span v-else class="book-cover-fallback" aria-hidden="true">{{ getCoverInitials(book.title) }}</span>
             </div>
           </div>
-          <div class="flex-2">
-            <strong style="color: var(--text-main); font-size: 1.05rem; display: block; margin-bottom: 0.25rem;">{{ book.title }}</strong>
-            <span style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">#{{ book.id }}</span>
+          <div class="flex-2 text-truncate">
+            <strong class="book-title" :title="book.title">{{ book.title }}</strong>
+            <span class="book-id">#{{ book.id }}</span>
           </div>
-          <div class="flex-2">
-            <span style="color: var(--text-muted); font-size: 0.95rem;">{{ book.authorNames?.join(', ') || 'Chưa cập nhật' }}</span>
+          <div class="flex-2 text-truncate">
+            <span class="author-names" :title="book.authorNames?.join(', ')">{{ book.authorNames?.join(', ') || 'Chưa cập nhật' }}</span>
           </div>
-          <div class="flex-1">
-            <span class="badge">{{ book.categoryNames?.join(', ') || 'Chưa phân loại' }}</span>
+          <div class="flex-1 text-truncate">
+            <span class="badge" :title="book.categoryNames?.join(', ')">{{ book.categoryNames?.join(', ') || 'Chưa phân loại' }}</span>
           </div>
-          <div style="width: 120px;">
+          <div style="width: 120px; flex-shrink: 0;">
             <span class="status-badge" :class="book.isActive ? 'success' : 'warning'">
               {{ book.isActive ? 'Đang hiển thị' : 'Đã ẩn' }}
             </span>
@@ -592,8 +592,36 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   background: #fdfdfd;
 }
 
-.flex-1 { flex: 1; min-width: 0; }
-.flex-2 { flex: 2; min-width: 0; }
+.flex-1 { flex: 1 1 0%; min-width: 0; }
+.flex-2 { flex: 2 1 0%; min-width: 0; }
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-title {
+  color: var(--text-main);
+  font-size: 1.05rem;
+  display: block;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-id {
+  font-family: monospace;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.author-names {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 .actions-col { display: flex; align-items: center; gap: 0.75rem; }
 
 /* List Transition */
@@ -629,7 +657,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.bento-table tr:hover .book-cover img {
+.list-row:hover .book-cover img {
   transform: scale(1.05);
 }
 
@@ -658,6 +686,12 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
   border-radius: 99px;
   font-size: 0.85rem;
   font-weight: 600;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .status-badge {
