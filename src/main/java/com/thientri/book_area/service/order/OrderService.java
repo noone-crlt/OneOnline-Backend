@@ -37,6 +37,7 @@ import com.thientri.book_area.repository.order.OrderRepository;
 import com.thientri.book_area.repository.payment.PaymentRepository;
 import com.thientri.book_area.repository.promotion.CouponRepository;
 import com.thientri.book_area.repository.user.AddressRepository;
+import com.thientri.book_area.service.notification.IEmailService;
 import com.thientri.book_area.service.payment.SePayService;
 
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,7 @@ public class OrderService {
 	private final UserLibraryRepository libraryRepository;
 	private final OrderMapper orderMapper;
 	private final SePayService sePayService;
+	private final IEmailService emailService;
 
 	@Transactional
 	public CheckoutResponse checkout(User user, CreateOrderRequest request, String clientIp) {
@@ -181,7 +183,15 @@ public class OrderService {
 
 		payment.getOrder().setStatus("CONFIRMED");
 		grantDigitalBooks(payment.getOrder());
-		return paymentRepository.save(payment);
+		Payment savedPayment = paymentRepository.save(payment);
+
+		try {
+			emailService.sendInvoiceEmail(savedPayment.getOrder());
+		} catch (Exception e) {
+			log.error("Không thể gửi email hóa đơn cho đơn hàng " + savedPayment.getOrder().getOrderCode(), e);
+		}
+
+		return savedPayment;
 	}
 
 	@Transactional
