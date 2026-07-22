@@ -155,13 +155,39 @@ public class BookServiceImpl implements IBookService {
     @Override
     @Transactional
     public void createBook(BookCreateRequest request, MultipartFile coverFile) {
+        createBook(request, coverFile, null);
+    }
+
+    @Override
+    @Transactional
+    public void createBook(BookCreateRequest request, MultipartFile coverFile, MultipartFile pdfFile) {
         createBook(request, Collections.emptyList());
+        Book createdBook = bookRepository.findBySlug(request.getSlug())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách vừa tạo."));
+
         if (coverFile != null && !coverFile.isEmpty()) {
-            Book createdBook = bookRepository.findBySlug(request.getSlug())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách vừa tạo."));
             replaceCover(createdBook, coverFile);
-            bookRepository.save(createdBook);
         }
+
+        if ((pdfFile != null && !pdfFile.isEmpty()) || request.getEbookSalePrice() != null) {
+            String fileObjectName = null;
+            if (pdfFile != null && !pdfFile.isEmpty()) {
+                fileObjectName = minioService.uploadFile(pdfFile, "ebooks");
+            }
+            
+            BookEdition ebookEdition = BookEdition.builder()
+                    .book(createdBook)
+                    .format("EBOOK_PDF")
+                    .skuCode("EBOOK-PDF-" + createdBook.getId())
+                    .originalPrice(request.getEbookOriginalPrice() != null ? request.getEbookOriginalPrice() : java.math.BigDecimal.ZERO)
+                    .salePrice(request.getEbookSalePrice() != null ? request.getEbookSalePrice() : java.math.BigDecimal.ZERO)
+                    .fileObjectName(fileObjectName)
+                    .isActive(true)
+                    .build();
+            createdBook.getEditions().add(ebookEdition);
+        }
+
+        bookRepository.save(createdBook);
     }
 
     // Đổi trạng thái sách
@@ -220,13 +246,67 @@ public class BookServiceImpl implements IBookService {
     @Override
     @Transactional
     public void updateBook(Long bookId, BookUpdateRequest request, MultipartFile coverFile) {
+        updateBook(bookId, request, coverFile, null);
+    }
+
+    @Override
+    @Transactional
+    public void updateBook(Long bookId, BookUpdateRequest request, MultipartFile coverFile, MultipartFile pdfFile) {
         updateBook(bookId, request);
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách."));
+
         if (coverFile != null && !coverFile.isEmpty()) {
-            Book book = bookRepository.findById(bookId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách."));
             replaceCover(book, coverFile);
-            bookRepository.save(book);
         }
+
+        // Tìm hoặc tạo EBOOK_PDF edition
+        BookEdition ebookEdition = book.getEditions().stream()
+                .filter(e -> "EBOOK_PDF".equals(e.getFormat()))
+                .findFirst()
+                .orElse(null);
+
+        boolean isNewEdition = false;
+        if (ebookEdition == null) {
+            if ((pdfFile != null && !pdfFile.isEmpty()) || request.getEbookSalePrice() != null) {
+                ebookEdition = BookEdition.builder()
+                        .book(book)
+                        .format("EBOOK_PDF")
+                        .skuCode("EBOOK-PDF-" + book.getId())
+                        .originalPrice(java.math.BigDecimal.ZERO)
+                        .salePrice(java.math.BigDecimal.ZERO)
+                        .isActive(true)
+                        .build();
+                isNewEdition = true;
+            }
+        }
+
+        if (ebookEdition != null) {
+            if (request.getEbookOriginalPrice() != null) {
+                ebookEdition.setOriginalPrice(request.getEbookOriginalPrice());
+            }
+            if (request.getEbookSalePrice() != null) {
+                ebookEdition.setSalePrice(request.getEbookSalePrice());
+            }
+
+            if (pdfFile != null && !pdfFile.isEmpty()) {
+                if (ebookEdition.getFileObjectName() != null) {
+                    try {
+                        minioService.deleteFile(ebookEdition.getFileObjectName());
+                    } catch (Exception e) {
+                        log.error("Lỗi khi xóa file PDF cũ {}", ebookEdition.getFileObjectName(), e);
+                    }
+                }
+                String fileObjectName = minioService.uploadFile(pdfFile, "ebooks");
+                ebookEdition.setFileObjectName(fileObjectName);
+            }
+
+            if (isNewEdition) {
+                book.getEditions().add(ebookEdition);
+            }
+        }
+
+        bookRepository.save(book);
     }
 
     @Override
@@ -241,11 +321,22 @@ public class BookServiceImpl implements IBookService {
     public AdminBookDetailResponse getAdminBook(Long bookId) {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách."));
+
+        BookEdition ebookEdition = book.getEditions().stream()
+                .filter(e -> "EBOOK_PDF".equals(e.getFormat()))
+                .findFirst()
+                .orElse(null);
+
+        java.math.BigDecimal ebookOriginalPrice = ebookEdition != null ? ebookEdition.getOriginalPrice() : null;
+        java.math.BigDecimal ebookSalePrice = ebookEdition != null ? ebookEdition.getSalePrice() : null;
+        String pdfFileName = ebookEdition != null ? ebookEdition.getFileObjectName() : null;
+
         return new AdminBookDetailResponse(book.getId(), book.getTitle(), book.getSlug(), book.getDescription(),
                 book.getPublisher() == null ? null : book.getPublisher().getId(),
                 book.getAuthors().stream().map(Author::getId).sorted().toList(),
                 book.getCategories().stream().map(Category::getId).sorted().toList(),
-                readImageUrls(book), Boolean.TRUE.equals(book.getIsActive()));
+                readImageUrls(book), Boolean.TRUE.equals(book.getIsActive()),
+                ebookOriginalPrice, ebookSalePrice, pdfFileName);
     }
 
     @Override

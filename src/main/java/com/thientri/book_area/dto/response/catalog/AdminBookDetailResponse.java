@@ -11,5 +11,8 @@ public record AdminBookDetailResponse(
 		List<Long> authorIds,
 		List<Long> categoryIds,
 		List<String> imageUrls,
-		boolean isActive) {
+		boolean isActive,
+		java.math.BigDecimal ebookOriginalPrice,
+		java.math.BigDecimal ebookSalePrice,
+		String pdfFileName) {
 }

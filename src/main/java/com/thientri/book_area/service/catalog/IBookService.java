@@ -37,6 +37,10 @@ public interface IBookService {
 
 	void updateBook(Long bookId, BookUpdateRequest request, MultipartFile coverFile);
 
+	void createBook(BookCreateRequest request, MultipartFile coverFile, MultipartFile pdfFile);
+
+	void updateBook(Long bookId, BookUpdateRequest request, MultipartFile coverFile, MultipartFile pdfFile);
+
 	// Quản lý ảnh của sách gốc
 	
 	

@@ -12,4 +12,7 @@ public class BookUpdateRequest {
 	private List<Long> authorIds;
 	private List<Long> categoryIds;
 	private Boolean isActive;
+
+	private java.math.BigDecimal ebookOriginalPrice;
+	private java.math.BigDecimal ebookSalePrice;
 }

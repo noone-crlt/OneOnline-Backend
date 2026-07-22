@@ -35,4 +35,7 @@ public class BookCreateRequest {
 	private List<String> imageUrls;
 
 	private Boolean isActive = true;
+
+	private java.math.BigDecimal ebookOriginalPrice;
+	private java.math.BigDecimal ebookSalePrice;
 }

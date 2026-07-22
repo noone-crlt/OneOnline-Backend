@@ -57,16 +57,18 @@ public class AdminBookManagementController {
 
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<Void>> createBook(@Valid @RequestPart("data") BookCreateRequest request,
-			@RequestPart(value = "coverFile", required = false) MultipartFile coverFile) {
-		bookService.createBook(request, coverFile);
+			@RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
+			@RequestPart(value = "pdfFile", required = false) MultipartFile pdfFile) {
+		bookService.createBook(request, coverFile, pdfFile);
 		return ResponseEntity.ok(ApiResponse.success("Tạo sách thành công.", null));
 	}
 
 	@PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<Void>> updateBook(@PathVariable Long id,
 			@Valid @RequestPart("data") BookUpdateRequest request,
-			@RequestPart(value = "coverFile", required = false) MultipartFile coverFile) {
-		bookService.updateBook(id, request, coverFile);
+			@RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
+			@RequestPart(value = "pdfFile", required = false) MultipartFile pdfFile) {
+		bookService.updateBook(id, request, coverFile, pdfFile);
 		return ResponseEntity.ok(ApiResponse.success("Cập nhật sách thành công.", null));
 	}
 
