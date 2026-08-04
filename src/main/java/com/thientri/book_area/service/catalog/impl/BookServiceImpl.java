@@ -175,6 +175,8 @@ public class BookServiceImpl implements IBookService {
                 fileObjectName = minioService.uploadFile(pdfFile, "ebooks");
             }
             
+            String coverObjectName = readStoredImageUrls(createdBook.getImages()).stream().findFirst().orElse(null);
+
             BookEdition ebookEdition = BookEdition.builder()
                     .book(createdBook)
                     .format("EBOOK_PDF")
@@ -182,6 +184,7 @@ public class BookServiceImpl implements IBookService {
                     .originalPrice(request.getEbookOriginalPrice() != null ? request.getEbookOriginalPrice() : java.math.BigDecimal.ZERO)
                     .salePrice(request.getEbookSalePrice() != null ? request.getEbookSalePrice() : java.math.BigDecimal.ZERO)
                     .fileObjectName(fileObjectName)
+                    .coverObjectName(coverObjectName)
                     .isActive(true)
                     .build();
             createdBook.getEditions().add(ebookEdition);
@@ -364,8 +367,26 @@ public class BookServiceImpl implements IBookService {
         if (!List.of("image/jpeg", "image/png", "image/webp").contains(contentType)) {
             throw new BadRequestException("Ảnh bìa phải có định dạng JPG, PNG hoặc WebP.");
         }
+
+        List<String> oldImages = readStoredImageUrls(book.getImages());
+        for (String oldPath : oldImages) {
+            if (oldPath != null && !oldPath.isBlank()) {
+                try {
+                    minioService.deleteFile(oldPath);
+                } catch (Exception e) {
+                    log.warn("Không thể xóa ảnh bìa cũ {}: {}", oldPath, e.getMessage());
+                }
+            }
+        }
+
         String objectName = minioService.uploadFile(coverFile, "sach/anhbia");
         book.setImages(writeImageUrls(List.of(objectName)));
+
+        if (book.getEditions() != null && !book.getEditions().isEmpty()) {
+            for (BookEdition edition : book.getEditions()) {
+                edition.setCoverObjectName(objectName);
+            }
+        }
     }
 
     private List<String> readImageUrls(Book book) {
