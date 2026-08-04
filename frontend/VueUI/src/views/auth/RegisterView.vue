@@ -1,7 +1,18 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PhArrowLeft, PhUserPlus } from '@phosphor-icons/vue'
+import { 
+  ArrowLeft, 
+  Mail, 
+  Lock, 
+  User, 
+  Eye, 
+  EyeOff, 
+  UserPlus, 
+  BookOpen, 
+  Sparkles, 
+  AlertCircle 
+} from 'lucide-vue-next'
 
 import { register } from '../../stores/auth'
 
@@ -14,6 +25,8 @@ const form = reactive({
   confirmPassword: '',
 })
 
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 
@@ -30,12 +43,12 @@ async function handleSubmit() {
   const confirmPassword = form.confirmPassword
 
   if (!fullName) {
-    showError('Họ tên không được để trống.')
+    showError('Vui lòng nhập họ và tên.')
     return
   }
 
   if (!email) {
-    showError('Email không được để trống.')
+    showError('Vui lòng nhập địa chỉ Email.')
     return
   }
 
@@ -45,7 +58,7 @@ async function handleSubmit() {
   }
 
   if (password !== confirmPassword) {
-    showError('Mật khẩu xác nhận không khớp.')
+    showError('Mật khẩu xác nhận không trùng khớp.')
     return
   }
 
@@ -74,136 +87,190 @@ async function handleSubmit() {
 
 <template>
   <main class="auth-page">
-    <div class="auth-container">
-      
-      <!-- Right side: Form (Swapped order for variety) -->
+    <div class="auth-container auth-container-reverse">
+      <!-- Right side: Form -->
       <div class="auth-form-wrapper">
         <div class="auth-form-inner">
           <div class="form-header">
-            <h2>Tạo tài khoản mới</h2>
-            <p>Tham gia cộng đồng đọc sách trực tuyến lớn nhất.</p>
+            <h2 class="form-title">Tạo tài khoản mới</h2>
+            <p class="form-subtitle">Tham gia cộng đồng đọc sách trực tuyến OneOnline</p>
           </div>
 
           <form class="auth-form" @submit.prevent="handleSubmit">
-            
             <div class="form-group">
               <label for="fullName">Họ và tên</label>
-              <input
-                id="fullName"
-                v-model="form.fullName"
-                type="text"
-                placeholder="VD: Nguyễn Văn A"
-                required
-                :disabled="isSubmitting"
-              />
+              <div class="input-wrapper">
+                <User :size="18" class="input-icon" />
+                <input
+                  id="fullName"
+                  v-model="form.fullName"
+                  type="text"
+                  placeholder="Nguyễn Văn A"
+                  required
+                  :disabled="isSubmitting"
+                />
+              </div>
             </div>
 
             <div class="form-group">
               <label for="email">Địa chỉ Email</label>
-              <input
-                id="email"
-                v-model="form.email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                :disabled="isSubmitting"
-              />
+              <div class="input-wrapper">
+                <Mail :size="18" class="input-icon" />
+                <input
+                  id="email"
+                  v-model="form.email"
+                  type="email"
+                  placeholder="name@example.com"
+                  required
+                  :disabled="isSubmitting"
+                />
+              </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label for="password">Mật khẩu</label>
-                <input
-                  id="password"
-                  v-model="form.password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  :disabled="isSubmitting"
-                />
+                <div class="input-wrapper">
+                  <Lock :size="18" class="input-icon" />
+                  <input
+                    id="password"
+                    v-model="form.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    placeholder="••••••••"
+                    required
+                    :disabled="isSubmitting"
+                  />
+                  <button 
+                    type="button" 
+                    class="toggle-password-btn" 
+                    @click="showPassword = !showPassword"
+                    tabindex="-1"
+                  >
+                    <EyeOff v-if="showPassword" :size="18" />
+                    <Eye v-else :size="18" />
+                  </button>
+                </div>
               </div>
               <div class="form-group">
                 <label for="confirmPassword">Xác nhận</label>
-                <input
-                  id="confirmPassword"
-                  v-model="form.confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  :disabled="isSubmitting"
-                />
+                <div class="input-wrapper">
+                  <Lock :size="18" class="input-icon" />
+                  <input
+                    id="confirmPassword"
+                    v-model="form.confirmPassword"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    placeholder="••••••••"
+                    required
+                    :disabled="isSubmitting"
+                  />
+                  <button 
+                    type="button" 
+                    class="toggle-password-btn" 
+                    @click="showConfirmPassword = !showConfirmPassword"
+                    tabindex="-1"
+                  >
+                    <EyeOff v-if="showConfirmPassword" :size="18" />
+                    <Eye v-else :size="18" />
+                  </button>
+                </div>
               </div>
             </div>
 
             <div v-if="errorMessage" class="alert alert-error">
-              {{ errorMessage }}
+              <AlertCircle :size="18" />
+              <span>{{ errorMessage }}</span>
             </div>
 
             <button class="submit-btn" type="submit" :disabled="isSubmitting">
               <span v-if="isSubmitting" class="spinner"></span>
               <template v-else>
-                Đăng ký ngay
-                <PhUserPlus :size="20" weight="bold" />
+                <span>Đăng ký ngay</span>
+                <UserPlus :size="18" />
               </template>
             </button>
           </form>
 
           <p class="auth-redirect">
             Đã có tài khoản?
-            <RouterLink to="/login">Đăng nhập</RouterLink>
+            <RouterLink to="/login" class="redirect-link">Đăng nhập</RouterLink>
           </p>
         </div>
       </div>
 
-      <!-- Left side: Image/Branding (Visually on the right due to flex-direction row-reverse) -->
+      <!-- Left side: Visual Section -->
       <div class="auth-visual">
-        <div class="visual-overlay"></div>
+        <div class="visual-bg-glow"></div>
         <div class="visual-content">
-          <RouterLink class="back-link" to="/">
-            <PhArrowLeft :size="20" />
-            Về trang chủ
-          </RouterLink>
-          <div class="brand">
-            <h1>Hành trình bắt đầu</h1>
-            <p>Hàng ngàn cuốn sách đang chờ đón bạn. Tham gia ngay hôm nay hoàn toàn miễn phí.</p>
+          <div class="visual-top">
+            <RouterLink class="back-link" to="/">
+              <ArrowLeft :size="18" />
+              <span>Về trang chủ</span>
+            </RouterLink>
+          </div>
+
+          <div class="visual-center">
+            <div class="brand-badge">
+              <BookOpen :size="20" class="brand-icon" />
+              <span>OneOnline</span>
+            </div>
+            <h1 class="visual-title">Hành trình đọc sách bắt đầu từ đây</h1>
+            <p class="visual-desc">Tạo tài khoản hoàn toàn miễn phí để khám phá hàng ngàn tựa sách hấp dẫn và lưu trữ tủ sách cá nhân.</p>
+          </div>
+
+          <div class="visual-bottom">
+            <div class="quote-glass-card">
+              <div class="quote-header">
+                <Sparkles :size="16" class="sparkle-icon" />
+                <span>Quyền lợi thành viên</span>
+              </div>
+              <p class="quote-text">Đọc thử miễn phí, tích điểm ưu đãi và đồng bộ thư viện đọc trên mọi thiết bị.</p>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   </main>
 </template>
 
 <style scoped>
 .auth-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f3f4f6; /* Tailwind gray-100 */
-  padding: 1rem;
+  background: #f8fafc;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(15, 23, 42, 0.04) 0px, transparent 50%);
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
 .auth-container {
   display: flex;
-  flex-direction: row-reverse; /* Swap sides for register page */
   width: 100%;
   max-width: 1000px;
-  min-height: 600px;
+  min-height: 620px;
   background: #ffffff;
-  border-radius: 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  border-radius: 2rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 25px 70px -15px rgba(15, 23, 42, 0.08), 0 4px 20px rgba(0, 0, 0, 0.02);
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-/* Visual Section */
+.auth-container-reverse {
+  flex-direction: row-reverse;
+}
+
+/* Visual Section (Left / Right) */
 .auth-visual {
   flex: 1;
   position: relative;
-  background-image: url('https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop');
-  background-size: cover;
-  background-position: center;
+  background: #0f172a;
+  overflow: hidden;
   display: none;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 @media (min-width: 768px) {
@@ -212,62 +279,126 @@ async function handleSubmit() {
   }
 }
 
-.visual-overlay {
+.visual-bg-glow {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(79, 70, 229, 0.5), rgba(30, 27, 75, 0.9)); /* Indigo gradient */
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(79, 70, 229, 0.18) 0%, transparent 45%),
+    linear-gradient(145deg, #0f172a 0%, #1e293b 60%, #090d16 100%);
+  z-index: 1;
 }
 
 .visual-content {
   position: relative;
   z-index: 10;
-  padding: 3rem;
+  padding: 3rem 2.5rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: 100%;
-  color: white;
+  box-sizing: border-box;
+  color: #ffffff;
 }
 
 .back-link {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: #ffffff;
   text-decoration: none;
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: color 0.2s;
-  width: fit-content;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .back-link:hover {
-  color: white;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateX(-3px);
 }
 
-.brand h1 {
-  font-size: 3rem;
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(165, 180, 252, 0.35);
+  color: #e0e7ff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.visual-title {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 2rem;
   font-weight: 800;
-  letter-spacing: -0.05em;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
   margin: 0 0 1rem 0;
-  line-height: 1;
+  color: #ffffff;
+  text-shadow: none;
 }
 
-.brand p {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.8);
+.visual-desc {
+  font-size: 0.95rem;
+  color: rgba(241, 245, 249, 0.85);
+  line-height: 1.6;
   margin: 0;
-  max-width: 90%;
-  line-height: 1.5;
+  max-width: 95%;
+  font-weight: 400;
 }
 
-/* Form Section */
+.quote-glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.quote-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #c7d2fe;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.quote-text {
+  font-size: 0.9rem;
+  color: #f8fafc;
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Form Section (Right) */
 .auth-form-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  padding: 3rem 2.5rem;
   background: #ffffff;
 }
 
@@ -277,21 +408,22 @@ async function handleSubmit() {
 }
 
 .form-header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
-.form-header h2 {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #111827; /* gray-900 */
+.form-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
   margin: 0 0 0.5rem 0;
   letter-spacing: -0.03em;
 }
 
-.form-header p {
-  color: #6b7280; /* gray-500 */
+.form-subtitle {
+  color: #64748b;
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .auth-form {
@@ -303,58 +435,104 @@ async function handleSubmit() {
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .form-group label {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #374151; /* gray-700 */
+  color: #334155;
 }
 
-.form-group input {
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0.9rem;
+  color: #94a3b8;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.input-wrapper input {
   width: 100%;
   box-sizing: border-box;
-  padding: 0.875rem 1rem;
-  border: 1px solid #d1d5db; /* gray-300 */
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  color: #111827;
-  background-color: #f9fafb; /* gray-50 */
-  transition: all 0.2s ease;
+  padding: 0.75rem 1rem 0.75rem 2.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.875rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background-color: #f8fafc;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
 }
 
-.form-group input:focus {
-  border-color: #6366f1; /* indigo-500 */
+.input-wrapper input:focus {
+  border-color: #0f172a;
   background-color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.06);
 }
 
-.form-group input:disabled {
-  opacity: 0.7;
+.input-wrapper input:focus ~ .input-icon,
+.input-wrapper:focus-within .input-icon {
+  color: #0f172a;
+}
+
+.input-wrapper input:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.toggle-password-btn:hover {
+  color: #0f172a;
 }
 
 /* Alerts */
 .alert {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  font-size: 0.9rem;
+  border-radius: 0.875rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .alert-error {
-  background-color: #fef2f2; /* red-50 */
-  color: #991b1b; /* red-800 */
-  border: 1px solid #fecaca; /* red-200 */
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 /* Submit Button */
@@ -364,58 +542,62 @@ async function handleSubmit() {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0.875rem 1rem;
-  background-color: #4f46e5; /* indigo-600 */
-  color: white;
+  padding: 0.85rem 1.25rem;
+  background-color: #0f172a;
+  color: #ffffff;
   border: none;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 700;
+  border-radius: 0.875rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 0.5rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 0.25rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .submit-btn:hover:not(:disabled) {
-  background-color: #4338ca; /* indigo-700 */
+  background-color: #1e293b;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
 }
 
 .submit-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
 .submit-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.65;
   cursor: wait;
 }
 
 /* Spinner */
 .spinner {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.2rem;
+  height: 1.2rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 /* Redirect text */
 .auth-redirect {
-  margin-top: 2rem;
+  margin-top: 1.75rem;
   text-align: center;
-  font-size: 0.95rem;
-  color: #6b7280;
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
-.auth-redirect a {
-  color: #4f46e5;
+.redirect-link {
+  color: #0f172a;
   font-weight: 700;
   text-decoration: none;
+  margin-left: 0.25rem;
+  transition: color 0.2s ease;
 }
 
-.auth-redirect a:hover {
+.redirect-link:hover {
+  color: #4f46e5;
   text-decoration: underline;
 }
 
@@ -423,7 +605,7 @@ async function handleSubmit() {
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;

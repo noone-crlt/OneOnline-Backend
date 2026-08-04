@@ -67,14 +67,21 @@ public class CatalogMapper {
 
     private List<String> readImageUrls(Book book) {
         String images = book.getImages();
-        if (images == null || images.isBlank()) {
-            return getEditionCover(book);
+        List<String> rawPaths = Collections.emptyList();
+        if (images != null && !images.isBlank()) {
+            try {
+                rawPaths = objectMapper.readValue(images, new TypeReference<List<String>>() {});
+            } catch (JsonProcessingException exception) {
+                rawPaths = List.of(images);
+            }
         }
-        try {
-            return objectMapper.readValue(images, new TypeReference<List<String>>() {});
-        } catch (JsonProcessingException exception) {
-            return List.of(images);
+        if (rawPaths.isEmpty()) {
+            rawPaths = getEditionCover(book);
         }
+        return rawPaths.stream()
+                .map(this::getPresignedUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .toList();
     }
 
     private List<String> getEditionCover(Book book) {

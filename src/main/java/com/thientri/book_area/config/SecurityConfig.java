@@ -103,11 +103,14 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowCredentials(true);
-		configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+		if (allowedOriginPatterns == null || allowedOriginPatterns.isEmpty()) {
+			configuration.setAllowedOriginPatterns(List.of("*"));
+		} else {
+			configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+		}
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-		configuration
-				.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
-		configuration.setExposedHeaders(List.of("Authorization"));
+		configuration.setAllowedHeaders(List.of("*"));
+		configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
 		configuration.setMaxAge(3600L);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

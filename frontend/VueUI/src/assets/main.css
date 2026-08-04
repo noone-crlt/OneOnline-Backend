@@ -703,13 +703,13 @@ body {
   box-shadow: 0 22px 56px color-mix(in oklab, var(--accent-deep) 12%, transparent);
 }
 
-.book-cover {
+.reading-item .book-cover {
   position: relative;
   min-height: 18rem;
   background: var(--cover);
 }
 
-.book-cover::before {
+.reading-item .book-cover::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -722,7 +722,7 @@ body {
     );
 }
 
-.book-cover span {
+.reading-item .book-cover span {
   position: absolute;
   top: 1rem;
   left: 1rem;

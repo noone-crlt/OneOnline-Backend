@@ -73,19 +73,25 @@ public class MinioService {
         }
     }
 
-    // Lấy link có thời hạn (Dùng cho Sách PDF, EPUB, MP3 để chống tải lậu)
+    // Lấy link có thời hạn (Dùng cho Sách PDF, EPUB, MP3 và Ảnh bìa)
     public String getPresignedUrl(String objectName) {
+        if (!StringUtils.hasText(objectName)) {
+            return null;
+        }
+        if (objectName.startsWith("http://") || objectName.startsWith("https://")) {
+            return objectName;
+        }
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
                             .bucket(bucketName)
                             .object(objectName)
-                            .expiry(2, TimeUnit.HOURS)
+                            .expiry(24, TimeUnit.HOURS)
                             .build());
         } catch (Exception e) {
-            log.error("Lỗi khi tạo URL có thời hạn cho file {}: ", objectName, e);
-            throw new RuntimeException("Không thể lấy dữ liệu file");
+            log.error("Lỗi khi tạo URL có thời hạn cho file {}: {}", objectName, e.getMessage());
+            return null;
         }
     }
 

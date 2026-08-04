@@ -140,6 +140,22 @@ function openBookDetail(slug) {
   router.push(`/book/${slug}`)
 }
 
+function toggleFormat(val) {
+  if (val === 'ALL') {
+    activeFormat.value = 'ALL'
+  } else {
+    activeFormat.value = activeFormat.value === val ? 'ALL' : val
+  }
+}
+
+function toggleCategory(cat) {
+  if (cat === 'ALL') {
+    activeCategory.value = 'ALL'
+  } else {
+    activeCategory.value = activeCategory.value === cat ? 'ALL' : cat
+  }
+}
+
 watch(searchQuery, () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(loadBooks, 300)
@@ -222,7 +238,7 @@ onBeforeUnmount(() => {
                   :key="filter.value"
                   type="button"
                   :class="{ active: activeFormat === filter.value }"
-                  @click="activeFormat = filter.value"
+                  @click="toggleFormat(filter.value)"
                 >
                   {{ filter.label }}
                 </button>
@@ -235,7 +251,7 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   :class="{ active: activeCategory === 'ALL' }"
-                  @click="activeCategory = 'ALL'"
+                  @click="toggleCategory('ALL')"
                 >
                   Tất cả
                 </button>
@@ -244,7 +260,7 @@ onBeforeUnmount(() => {
                   :key="category"
                   type="button"
                   :class="{ active: activeCategory === category }"
-                  @click="activeCategory = category"
+                  @click="toggleCategory(category)"
                 >
                   {{ category }}
                 </button>

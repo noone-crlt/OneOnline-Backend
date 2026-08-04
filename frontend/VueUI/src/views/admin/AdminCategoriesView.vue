@@ -1,35 +1,120 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import {
   PhMagnifyingGlass,
   PhPlus,
   PhPencilSimple,
   PhTrash,
   PhBookmarkSimple,
+  PhX,
 } from '@phosphor-icons/vue'
+import {
+  getCategories,
+  createAdminCategory,
+  updateAdminCategory,
+  deleteAdminCategory
+} from '../../services/api'
+import { toast } from 'vue-sonner'
 
-// Mock Data for Categories
-const categories = ref([
-  { id: 1, name: 'Tâm lý học', slug: 'tam-ly-hoc', bookCount: 15 },
-  { id: 2, name: 'Tiểu thuyết', slug: 'tieu-thuyet', bookCount: 42 },
-  { id: 3, name: 'Kỹ năng sống', slug: 'ky-nang-song', bookCount: 28 },
-  { id: 4, name: 'Kinh doanh', slug: 'kinh-doanh', bookCount: 10 },
-  { id: 5, name: 'Lịch sử', slug: 'lich-su', bookCount: 8 }
-])
-
+const categories = ref([])
+const isLoading = ref(false)
+const isSaving = ref(false)
 const searchQuery = ref('')
+const isModalOpen = ref(false)
+const editingCategoryId = ref(null)
+const categoryForm = ref({
+  name: ''
+})
 
-function handleAddCategory() {
-  alert('Chức năng "Thêm danh mục" (UI)')
+const filteredCategories = computed(() => {
+  if (!searchQuery.value.trim()) return categories.value
+  const query = searchQuery.value.toLowerCase().trim()
+  return categories.value.filter(c => c.name?.toLowerCase().includes(query))
+})
+
+const modalTitle = computed(() => editingCategoryId.value ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới')
+
+function generateSlug(name) {
+  if (!name) return ''
+  return name.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/([^0-9a-z-\s])/g, '')
+    .replace(/(\s+)/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
-function handleEditCategory(id) {
-  alert(`Chức năng "Sửa danh mục" (ID: ${id})`)
+async function loadCategories() {
+  isLoading.value = true
+  try {
+    categories.value = await getCategories()
+  } catch (error) {
+    console.error(error)
+    toast.error('Không thể tải danh sách danh mục.')
+  } finally {
+    isLoading.value = false
+  }
 }
 
-function handleDeleteCategory(id) {
-  alert(`Chức năng "Xóa danh mục" (ID: ${id})`)
+function openCreateModal() {
+  editingCategoryId.value = null
+  categoryForm.value.name = ''
+  isModalOpen.value = true
 }
+
+function openEditModal(category) {
+  editingCategoryId.value = category.id
+  categoryForm.value.name = category.name
+  isModalOpen.value = true
+}
+
+function closeModal() {
+  isModalOpen.value = false
+  editingCategoryId.value = null
+  categoryForm.value.name = ''
+}
+
+async function saveCategory() {
+  if (!categoryForm.value.name.trim()) return
+
+  isSaving.value = true
+  try {
+    const payload = { name: categoryForm.value.name.trim() }
+    if (editingCategoryId.value) {
+      await updateAdminCategory(editingCategoryId.value, payload)
+      toast.success('Cập nhật danh mục thành công.')
+    } else {
+      await createAdminCategory(payload)
+      toast.success('Thêm danh mục thành công.')
+    }
+    closeModal()
+    await loadCategories()
+  } catch (error) {
+    console.error(error)
+    toast.error(error instanceof Error ? error.message : 'Không thể lưu danh mục.')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+async function handleDeleteCategory(id) {
+  if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return
+
+  try {
+    await deleteAdminCategory(id)
+    toast.success('Xóa danh mục thành công.')
+    await loadCategories()
+  } catch (error) {
+    console.error(error)
+    toast.error(error instanceof Error ? error.message : 'Không thể xóa danh mục.')
+  }
+}
+
+onMounted(() => {
+  loadCategories()
+})
 </script>
 
 <template>
@@ -40,7 +125,7 @@ function handleDeleteCategory(id) {
         <h2>Quản lý Danh mục</h2>
         <p>Phân loại và tổ chức các tác phẩm theo thể loại.</p>
       </div>
-      <button class="primary-btn" @click="handleAddCategory">
+      <button class="primary-btn" @click="openCreateModal">
         <PhPlus :size="20" weight="bold" />
         Thêm danh mục
       </button>
@@ -65,7 +150,11 @@ function handleDeleteCategory(id) {
       </div>
       
       <transition-group name="list-stagger" tag="div" class="list-body">
-        <div v-for="category in categories" :key="category.id" class="list-row">
+        <div v-if="isLoading" class="empty-state" key="loading">
+          <p>Đang tải danh sách danh mục…</p>
+        </div>
+        
+        <div v-else v-for="category in filteredCategories" :key="category.id" class="list-row">
           <div style="width: 80px;">
             <span class="id-badge">#{{ category.id }}</span>
           </div>
@@ -76,14 +165,14 @@ function handleDeleteCategory(id) {
             </div>
           </div>
           <div class="flex-2">
-            <code class="slug-code">{{ category.slug }}</code>
+            <code class="slug-code">{{ generateSlug(category.name) }}</code>
           </div>
           <div class="flex-1">
-            <span class="count-badge">{{ category.bookCount }} tác phẩm</span>
+            <span class="count-badge">{{ category.bookCount || 0 }} tác phẩm</span>
           </div>
           <div class="actions-col" style="width: 100px; justify-content: flex-end;">
             <div class="action-buttons">
-              <button class="icon-btn edit magnetic-btn" @click="handleEditCategory(category.id)" title="Chỉnh sửa">
+              <button class="icon-btn edit magnetic-btn" @click="openEditModal(category)" title="Chỉnh sửa">
                 <PhPencilSimple :size="18" />
               </button>
               <button class="icon-btn danger magnetic-btn" @click="handleDeleteCategory(category.id)" title="Xóa">
@@ -93,10 +182,37 @@ function handleDeleteCategory(id) {
           </div>
         </div>
         
-        <div v-if="categories.length === 0" class="empty-state" key="empty">
+        <div v-if="!isLoading && filteredCategories.length === 0" class="empty-state" key="empty">
           <p>Chưa có danh mục nào.</p>
         </div>
       </transition-group>
+    </div>
+
+    <!-- Category Modal -->
+    <div v-if="isModalOpen" class="modal-backdrop" @click.self="closeModal">
+      <section class="category-modal" role="dialog" aria-modal="true" :aria-label="modalTitle">
+        <header class="modal-header">
+          <div>
+            <h3>{{ modalTitle }}</h3>
+            <p>Thông tin có dấu * là bắt buộc.</p>
+          </div>
+          <button class="icon-btn" type="button" title="Đóng" @click="closeModal"><PhX :size="22" /></button>
+        </header>
+
+        <form class="category-form" @submit.prevent="saveCategory">
+          <label>
+            Tên danh mục *
+            <input v-model="categoryForm.name" required placeholder="Ví dụ: Lịch sử, Kinh tế..." maxlength="255" />
+          </label>
+
+          <div class="modal-actions">
+            <button class="secondary-btn" type="button" :disabled="isSaving" @click="closeModal">Hủy</button>
+            <button class="primary-btn" type="submit" :disabled="isSaving">
+              {{ isSaving ? 'Đang lưu…' : editingCategoryId ? 'Lưu thay đổi' : 'Tạo danh mục' }}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   </div>
 </template>
@@ -336,5 +452,99 @@ function handleDeleteCategory(id) {
   text-align: center;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+/* Modal Styling */
+.modal-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(9, 9, 11, 0.45);
+}
+
+.category-modal {
+  width: min(480px, 100%);
+  overflow: auto;
+  border: 1px solid var(--bento-border);
+  border-radius: 1.5rem;
+  background: var(--bento-surface);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+  padding: 1.5rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.4rem;
+  color: var(--text-main);
+}
+
+.modal-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.category-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.category-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.category-form input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--bento-border);
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.7rem 0.8rem;
+  color: var(--text-main);
+  font: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.category-form input:focus {
+  border-color: #a1a1aa;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.secondary-btn {
+  background: #f4f4f5;
+  color: var(--text-main);
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 99px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+  background: #e4e4e7;
 }
 </style>

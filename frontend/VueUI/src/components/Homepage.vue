@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, BookOpenText, TrendingUp, Compass, MonitorSmartphone, Baby, BrainCircuit, Languages, ShoppingCart, Eye, Star, ChevronRight } from 'lucide-vue-next'
+import { Search, BookOpenText, TrendingUp, Compass, MonitorSmartphone, Baby, BrainCircuit, Languages, ShoppingCart, Eye, Star, ChevronRight, ChevronLeft, ArrowUpRight } from 'lucide-vue-next'
 import AppFooter from './layout/AppFooter.vue'
 import TopNavbar from './layout/TopNavbar.vue'
 import FeaturedBooksHero from './FeaturedBooksHero.vue'
@@ -11,7 +11,17 @@ import gsap from 'gsap'
 
 const router = useRouter()
 const pageRoot = ref(null)
+const categoriesGridRef = ref(null)
 const books = ref([])
+
+function scrollCategories(direction) {
+  if (categoriesGridRef.value) {
+    categoriesGridRef.value.scrollBy({
+      left: direction * 280,
+      behavior: 'smooth'
+    })
+  }
+}
 const isLoading = ref(false)
 const errorMessage = ref('')
 const searchInput = ref('')
@@ -223,9 +233,20 @@ onUnmounted(() => {
         <!-- Categories Section -->
         <section class="section-container categories-section">
           <div class="section-header">
-            <h2 class="section-title">Thể loại nổi bật</h2>
+            <div class="section-title-group">
+              <h2 class="section-title">Thể loại nổi bật</h2>
+              <p class="section-subtitle">Nhấp vào thể loại để lọc sách nhanh hoặc dùng nút điều hướng</p>
+            </div>
+            <div class="category-scroll-actions">
+              <button class="scroll-btn" @click="scrollCategories(-1)" title="Cuộn sang trái" aria-label="Cuộn sang trái">
+                <ChevronLeft :size="18" />
+              </button>
+              <button class="scroll-btn" @click="scrollCategories(1)" title="Cuộn sang phải" aria-label="Cuộn sang phải">
+                <ChevronRight :size="18" />
+              </button>
+            </div>
           </div>
-          <div class="categories-bento-grid" :class="{ 'has-active': activeCategory !== 'ALL' }">
+          <div ref="categoriesGridRef" class="categories-bento-grid" :class="{ 'has-active': activeCategory !== 'ALL' }">
             <div 
               v-for="cat in featuredCategories" 
               :key="cat.name" 
@@ -233,8 +254,13 @@ onUnmounted(() => {
               :class="{ 'is-active': activeCategory === cat.name }"
               @click="filterByCategory(cat.name)"
             >
-              <div class="category-icon-wrapper">
-                <component :is="cat.icon" :size="28" stroke-width="1.5" class="category-icon" />
+              <div class="category-card-top">
+                <div class="category-icon-wrapper">
+                  <component :is="cat.icon" :size="26" stroke-width="1.5" class="category-icon" />
+                </div>
+                <div class="category-arrow-btn">
+                  <ArrowUpRight :size="18" class="arrow-icon" />
+                </div>
               </div>
               <div class="category-info">
                 <h4 class="category-name">{{ cat.name }}</h4>
@@ -636,6 +662,46 @@ onUnmounted(() => {
   margin-bottom: 0.5rem;
 }
 
+.section-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.section-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.category-scroll-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scroll-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background: var(--card-bg, #ffffff);
+  color: var(--text-main, #0f172a);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.scroll-btn:hover {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  transform: translateY(-1px);
+}
+
 .section-title {
   font-size: 1.75rem;
   font-weight: 700;
@@ -740,6 +806,45 @@ onUnmounted(() => {
 .categories-bento-grid.has-active .category-bento-card.is-active .category-icon-wrapper {
   background: #0f172a;
   color: #ffffff;
+}
+
+.category-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 1.25rem;
+}
+
+.category-arrow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.category-bento-card:hover .category-arrow-btn {
+  background: #0f172a;
+  color: #ffffff;
+  transform: translate(2px, -2px) scale(1.08);
+}
+
+.category-bento-card.is-active .category-arrow-btn {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.category-arrow-btn .arrow-icon {
+  transition: transform 0.3s ease;
+}
+
+.category-bento-card:hover .arrow-icon {
+  transform: translate(1px, -1px);
 }
 
 /* Icon Wrapper */

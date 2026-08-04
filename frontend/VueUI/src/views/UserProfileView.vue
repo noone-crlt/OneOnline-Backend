@@ -2,14 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authUser, updateAuthUser } from '../stores/auth'
-import { getOrderHistory, getUserLibrary, updateCurrentUserProfile } from '../services/api'
+import { getOrderHistory, getUserLibrary, updateCurrentUserProfile, getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../services/api'
 import { toast } from 'vue-sonner'
 import TopNavbar from '../components/layout/TopNavbar.vue'
 import AppFooter from '../components/layout/AppFooter.vue'
 
 const router = useRouter()
 
-const activeTab = ref('library') // 'library', 'profile', 'orders'
+const activeTab = ref('library') // 'library', 'profile', 'orders', 'addresses'
 
 // Profile form state
 const fullName = ref(authUser.value?.fullName || 'Khách hàng One Online')
@@ -23,6 +23,118 @@ const isLibraryLoading = ref(true)
 const isOrdersLoading = ref(true)
 const libraryError = ref('')
 const ordersError = ref('')
+
+// ============= Address state =============
+const addresses = ref([])
+const isAddressLoading = ref(true)
+const addressError = ref('')
+const showAddressForm = ref(false)
+const editingAddressId = ref(null)
+const isAddressSaving = ref(false)
+
+const addressForm = ref({
+  recipientName: '',
+  recipientPhone: '',
+  addressLine: '',
+  provinceId: '',
+  provinceName: '',
+  districtId: '',
+  districtName: '',
+  wardId: '',
+  wardName: '',
+  isDefault: false,
+})
+
+function resetAddressForm() {
+  addressForm.value = {
+    recipientName: '',
+    recipientPhone: '',
+    addressLine: '',
+    provinceId: '',
+    provinceName: '',
+    districtId: '',
+    districtName: '',
+    wardId: '',
+    wardName: '',
+    isDefault: false,
+  }
+  editingAddressId.value = null
+  showAddressForm.value = false
+}
+
+function openAddForm() {
+  resetAddressForm()
+  showAddressForm.value = true
+}
+
+function openEditForm(addr) {
+  editingAddressId.value = addr.id
+  addressForm.value = {
+    recipientName: addr.recipientName || '',
+    recipientPhone: addr.recipientPhone || '',
+    addressLine: addr.addressLine || '',
+    provinceId: addr.provinceId || '',
+    provinceName: addr.provinceName || '',
+    districtId: addr.districtId || '',
+    districtName: addr.districtName || '',
+    wardId: addr.wardId || '',
+    wardName: addr.wardName || '',
+    isDefault: addr.isDefault || false,
+  }
+  showAddressForm.value = true
+}
+
+async function loadAddresses() {
+  isAddressLoading.value = true
+  addressError.value = ''
+  try {
+    addresses.value = await getAddresses()
+  } catch (e) {
+    addressError.value = e instanceof Error ? e.message : 'Không thể tải danh sách địa chỉ.'
+  } finally {
+    isAddressLoading.value = false
+  }
+}
+
+async function handleSaveAddress() {
+  isAddressSaving.value = true
+  try {
+    if (editingAddressId.value) {
+      await updateAddress(editingAddressId.value, addressForm.value)
+      toast.success('Cập nhật địa chỉ thành công!')
+    } else {
+      await addAddress(addressForm.value)
+      toast.success('Thêm địa chỉ mới thành công!')
+    }
+    resetAddressForm()
+    await loadAddresses()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Không thể lưu địa chỉ.')
+  } finally {
+    isAddressSaving.value = false
+  }
+}
+
+async function handleDeleteAddress(id) {
+  if (!confirm('Bạn có chắc muốn xóa địa chỉ này?')) return
+  try {
+    await deleteAddress(id)
+    toast.success('Đã xóa địa chỉ.')
+    await loadAddresses()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Không thể xóa địa chỉ.')
+  }
+}
+
+async function handleSetDefault(id) {
+  try {
+    await setDefaultAddress(id)
+    toast.success('Đã đặt làm địa chỉ mặc định.')
+    await loadAddresses()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Không thể đặt địa chỉ mặc định.')
+  }
+}
 
 function formatCurrency(val) {
   return new Intl.NumberFormat('vi-VN', {
@@ -98,6 +210,7 @@ onMounted(() => {
     phone.value = authUser.value.phone || ''
   }
   loadAccountData()
+  loadAddresses()
 })
 </script>
 
@@ -144,6 +257,19 @@ onMounted(() => {
                 </svg>
               </span>
               <span>Thông tin cá nhân</span>
+            </button>
+
+            <button 
+              :class="['menu-link-btn', { active: activeTab === 'addresses' }]" 
+              @click="activeTab = 'addresses'"
+            >
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </span>
+              <span>Địa chỉ giao hàng</span>
             </button>
 
             <button 
@@ -239,6 +365,113 @@ onMounted(() => {
                 {{ isSaving ? 'Đang lưu...' : 'Cập nhật thông tin' }}
               </button>
             </form>
+          </div>
+
+          <!-- TAB: ADDRESSES -->
+          <div v-else-if="activeTab === 'addresses'" class="pane-addresses">
+            <div class="pane-header">
+              <span class="pane-kicker">Shipping Addresses</span>
+              <h3 class="pane-title">Địa chỉ giao hàng</h3>
+            </div>
+
+            <p v-if="addressError" class="profile-state profile-state-error" role="alert">{{ addressError }}</p>
+            <p v-else-if="isAddressLoading" class="profile-state">Đang tải danh sách địa chỉ...</p>
+
+            <template v-else>
+              <!-- Address Cards -->
+              <div v-if="addresses.length > 0" class="address-card-list">
+                <div 
+                  v-for="addr in addresses" 
+                  :key="addr.id" 
+                  :class="['address-card', { 'address-card--default': addr.isDefault }]"
+                >
+                  <div class="address-card-body">
+                    <div class="address-card-top">
+                      <span class="address-recipient">{{ addr.recipientName }}</span>
+                      <span v-if="addr.isDefault" class="address-default-badge">Mặc định</span>
+                    </div>
+                    <p class="address-phone">{{ addr.recipientPhone }}</p>
+                    <p class="address-detail">{{ addr.addressLine }}, {{ addr.wardName }}, {{ addr.districtName }}, {{ addr.provinceName }}</p>
+                  </div>
+                  <div class="address-card-actions">
+                    <button class="addr-action-btn" @click="openEditForm(addr)" title="Sửa">
+                      <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                      <span>Sửa</span>
+                    </button>
+                    <button v-if="!addr.isDefault" class="addr-action-btn" @click="handleSetDefault(addr.id)" title="Đặt mặc định">
+                      <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                      <span>Mặc định</span>
+                    </button>
+                    <button class="addr-action-btn addr-action-btn--danger" @click="handleDeleteAddress(addr.id)" title="Xóa">
+                      <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      <span>Xóa</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else-if="!showAddressForm" class="profile-state">
+                <strong>Chưa có địa chỉ nào</strong>
+                <span>Thêm địa chỉ giao hàng để sử dụng khi đặt sách.</span>
+              </div>
+
+              <!-- Add Button -->
+              <button v-if="!showAddressForm" class="btn btn-primary btn-add-address" @click="openAddForm">
+                + Thêm địa chỉ mới
+              </button>
+
+              <!-- Address Form -->
+              <div v-if="showAddressForm" class="address-form-wrapper">
+                <div class="address-form-header">
+                  <h4>{{ editingAddressId ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới' }}</h4>
+                  <button class="addr-form-close" @click="resetAddressForm" title="Đóng">✕</button>
+                </div>
+                <form class="profile-form-layout" @submit.prevent="handleSaveAddress">
+                  <div class="form-row-two-col">
+                    <div class="form-row-group">
+                      <label for="addr-name">Tên người nhận</label>
+                      <input id="addr-name" type="text" v-model="addressForm.recipientName" required maxlength="255" placeholder="Nguyễn Văn A" />
+                    </div>
+                    <div class="form-row-group">
+                      <label for="addr-phone">Số điện thoại</label>
+                      <input id="addr-phone" type="tel" v-model="addressForm.recipientPhone" required maxlength="20" placeholder="0901 234 567" />
+                    </div>
+                  </div>
+
+                  <div class="form-row-group">
+                    <label for="addr-line">Địa chỉ chi tiết</label>
+                    <input id="addr-line" type="text" v-model="addressForm.addressLine" required placeholder="Số nhà, tên đường..." />
+                  </div>
+
+                  <div class="form-row-three-col">
+                    <div class="form-row-group">
+                      <label for="addr-province">Tỉnh / Thành phố</label>
+                      <input id="addr-province" type="text" v-model="addressForm.provinceName" required placeholder="Hồ Chí Minh" @input="addressForm.provinceId = addressForm.provinceName" />
+                    </div>
+                    <div class="form-row-group">
+                      <label for="addr-district">Quận / Huyện</label>
+                      <input id="addr-district" type="text" v-model="addressForm.districtName" required placeholder="Quận 1" @input="addressForm.districtId = addressForm.districtName" />
+                    </div>
+                    <div class="form-row-group">
+                      <label for="addr-ward">Phường / Xã</label>
+                      <input id="addr-ward" type="text" v-model="addressForm.wardName" required placeholder="Phường Bến Nghé" @input="addressForm.wardId = addressForm.wardName" />
+                    </div>
+                  </div>
+
+                  <label class="addr-default-check">
+                    <input type="checkbox" v-model="addressForm.isDefault" />
+                    <span>Đặt làm địa chỉ mặc định</span>
+                  </label>
+
+                  <div class="addr-form-buttons">
+                    <button class="btn btn-primary btn-save-addr" type="submit" :disabled="isAddressSaving">
+                      {{ isAddressSaving ? 'Đang lưu...' : (editingAddressId ? 'Cập nhật' : 'Thêm địa chỉ') }}
+                    </button>
+                    <button class="btn btn-secondary btn-cancel-addr" type="button" @click="resetAddressForm">Hủy</button>
+                  </div>
+                </form>
+              </div>
+            </template>
           </div>
 
           <!-- TAB: ORDER HISTORY -->
@@ -738,11 +971,228 @@ onMounted(() => {
   transform: translateY(-10px);
 }
 
+/* ============ ADDRESS TAB ============ */
+.address-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.address-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.2rem;
+  padding: 1.2rem 1.5rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  transition: border-color 180ms ease;
+}
+
+.address-card:hover {
+  border-color: var(--text-soft);
+}
+
+.address-card--default {
+  border-color: var(--text-strong);
+}
+
+.address-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.address-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.address-recipient {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.address-default-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  background-color: var(--pastel-green-bg);
+  color: var(--pastel-green-text);
+  border: 1px solid rgba(52, 101, 56, 0.12);
+}
+
+.address-phone {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  margin: 0 0 0.4rem;
+}
+
+.address-detail {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.address-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.addr-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.65rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.addr-action-btn:hover {
+  color: var(--text-strong);
+  border-color: var(--text-strong);
+}
+
+.addr-action-btn--danger:hover {
+  color: var(--pastel-red-text, #9f2f2d);
+  border-color: var(--pastel-red-text, #9f2f2d);
+}
+
+.btn-add-address {
+  width: max-content;
+  padding: 0.7rem 1.3rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.address-form-wrapper {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+}
+
+.address-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.address-form-header h4 {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.addr-form-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--text-soft);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: color 150ms ease;
+}
+
+.addr-form-close:hover {
+  color: var(--text-strong);
+}
+
+.form-row-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-row-three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.addr-default-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.addr-default-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--text-strong);
+  cursor: pointer;
+}
+
+.addr-form-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.btn-save-addr,
+.btn-cancel-addr {
+  padding: 0.8rem 1.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  height: auto;
+}
+
+.btn-save-addr {
+  width: max-content;
+}
+
 /* RESPONSIVE LAYOUT */
 @media (max-width: 900px) {
   .profile-grid {
     grid-template-columns: 1fr;
     gap: 2.5rem;
+  }
+
+  .form-row-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row-three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .address-card {
+    flex-direction: column;
+  }
+
+  .address-card-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 </style>

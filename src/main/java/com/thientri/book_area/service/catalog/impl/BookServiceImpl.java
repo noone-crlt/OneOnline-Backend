@@ -369,13 +369,18 @@ public class BookServiceImpl implements IBookService {
     }
 
     private List<String> readImageUrls(Book book) {
-        List<String> bookImages = readStoredImageUrls(book.getImages());
-        if (!bookImages.isEmpty()) return bookImages;
+        List<String> rawPaths = readStoredImageUrls(book.getImages());
+        if (rawPaths.isEmpty() && book.getEditions() != null) {
+            rawPaths = book.getEditions().stream()
+                    .map(BookEdition::getCoverObjectName)
+                    .filter(objectName -> objectName != null && !objectName.isBlank())
+                    .limit(1)
+                    .toList();
+        }
 
-        return book.getEditions().stream()
-                .map(BookEdition::getCoverObjectName)
-                .filter(objectName -> objectName != null && !objectName.isBlank())
-                .limit(1)
+        return rawPaths.stream()
+                .map(minioService::getPresignedUrl)
+                .filter(url -> url != null && !url.isBlank())
                 .toList();
     }
 

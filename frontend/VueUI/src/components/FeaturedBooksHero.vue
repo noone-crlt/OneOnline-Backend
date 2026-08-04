@@ -80,6 +80,7 @@ async function fetchFeaturedBooks() {
     ]
   } finally {
     isLoading.value = false
+    startAutoplay()
   }
 }
 
@@ -147,11 +148,29 @@ const ghostStrokeStyle = computed(() => {
   return `${width} ${activeGhostColor.value}`
 })
 
+let autoplayInterval = null
+
+function startAutoplay() {
+  stopAutoplay()
+  if (books.value.length <= 1) return
+  autoplayInterval = setInterval(() => {
+    next()
+  }, 5000)
+}
+
+function stopAutoplay() {
+  if (autoplayInterval) {
+    clearInterval(autoplayInterval)
+    autoplayInterval = null
+  }
+}
+
 function next() {
   if (isAnimating.value || books.value.length <= 1) return
   isAnimating.value = true
   activeIndex.value = (activeIndex.value + 1) % books.value.length
   setTimeout(() => { isAnimating.value = false }, 650)
+  startAutoplay()
 }
 
 function prev() {
@@ -159,6 +178,7 @@ function prev() {
   isAnimating.value = true
   activeIndex.value = (activeIndex.value - 1 + books.value.length) % books.value.length
   setTimeout(() => { isAnimating.value = false }, 650)
+  startAutoplay()
 }
 
 function selectBook(index) {
@@ -210,6 +230,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeyDown)
+  stopAutoplay()
 })
 </script>
 
@@ -219,6 +240,8 @@ onUnmounted(() => {
     :style="{ backgroundColor: activeBgColor }"
     @touchstart="onTouchStart"
     @touchend="onTouchEnd"
+    @mouseenter="stopAutoplay"
+    @mouseleave="startAutoplay"
   >
     <!-- SVG Grain Overlay -->
     <div class="grain-overlay"></div>

@@ -11,7 +11,7 @@ export class ApiError extends Error {
 // Khi cần dùng backend local, đặt VITE_API_BASE_URL=http://localhost:8080 trong .env.local.
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
-  'https://book-area-api-l4hkavao3q-as.a.run.app'
+  'https://book-area-api-313942406394.asia-southeast1.run.app'
 const MINIO_BASE_URL = 
   import.meta.env.VITE_MINIO_URL ?? 
   'https://minio1.webtui.vn:9000'
@@ -259,6 +259,29 @@ export function getCategories() {
   return apiFetch('/api/categories')
 }
 
+export function createAdminCategory(data) {
+  return apiFetch('/api/categories', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: data,
+  })
+}
+
+export function updateAdminCategory(categoryId, data) {
+  return apiFetch(`/api/categories/${categoryId}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: data,
+  })
+}
+
+export function deleteAdminCategory(categoryId) {
+  return apiFetch(`/api/categories/${categoryId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
 export function getBookBySlug(slug, init = {}) {
   return apiFetch(`/api/books/${slug}`, init)
 }
@@ -284,26 +307,27 @@ export function getAdminBookFormOptions() {
   return apiFetch('/api/admin/books/form-options', { headers: authHeaders() })
 }
 
-function buildBookFormData(data, coverFile) {
+function buildBookFormData(data, coverFile, pdfFile) {
   const formData = new FormData()
   formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }))
   if (coverFile) formData.append('coverFile', coverFile)
+  if (pdfFile) formData.append('pdfFile', pdfFile)
   return formData
 }
 
-export function createAdminBook(data, coverFile) {
+export function createAdminBook(data, coverFile, pdfFile) {
   return apiFetch('/api/admin/books', {
     method: 'POST',
     headers: authHeaders(),
-    body: buildBookFormData(data, coverFile),
+    body: buildBookFormData(data, coverFile, pdfFile),
   })
 }
 
-export function updateAdminBook(bookId, data, coverFile) {
+export function updateAdminBook(bookId, data, coverFile, pdfFile) {
   return apiFetch(`/api/admin/books/${bookId}`, {
     method: 'PUT',
     headers: authHeaders(),
-    body: buildBookFormData(data, coverFile),
+    body: buildBookFormData(data, coverFile, pdfFile),
   })
 }
 
@@ -405,9 +429,46 @@ export function getFileUrl(path) {
     cleanPath = `sach/${cleanPath.substring('book/'.length)}`
   }
 
-  return `${MINIO_BASE_URL}/book-area-files/${cleanPath}`
+  const bucketName = import.meta.env.VITE_MINIO_BUCKET ?? 'bucket-oneonline'
+  return `${MINIO_BASE_URL}/${bucketName}/${cleanPath}`
 }
 
 export function getFeaturedCategories() {
   return apiFetch('/api/categories/featured')
+}
+
+// ============= Address Management =============
+
+export function getAddresses() {
+  return apiFetch('/api/auth/addresses', { headers: authHeaders() })
+}
+
+export function addAddress(payload) {
+  return apiFetch('/api/auth/addresses', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: payload,
+  })
+}
+
+export function updateAddress(id, payload) {
+  return apiFetch(`/api/auth/addresses/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: payload,
+  })
+}
+
+export function deleteAddress(id) {
+  return apiFetch(`/api/auth/addresses/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
+export function setDefaultAddress(id) {
+  return apiFetch(`/api/auth/addresses/${id}/default`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
 }
