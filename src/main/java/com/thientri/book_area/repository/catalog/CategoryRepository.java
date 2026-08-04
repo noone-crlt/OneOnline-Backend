@@ -22,7 +22,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 				c.id, c.name, COUNT(b)
 			)
 			FROM Category c
-			LEFT JOIN Book b ON c MEMBER OF b.categories
+			LEFT JOIN c.books b
 			GROUP BY c.id, c.name
 			ORDER BY c.id ASC
 			""")

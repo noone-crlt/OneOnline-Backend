@@ -1,10 +1,16 @@
 package com.thientri.book_area.model.catalog;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,4 +33,9 @@ public class Category {
 	// Bắt buộc phải có tên và không được trùng lặp danh mục
 	@Column(name = "name", length = 255, nullable = false, unique = true)
 	private String name;
+
+	@ManyToMany(mappedBy = "categories")
+	@JsonIgnore
+	@Builder.Default
+	private Set<Book> books = new HashSet<>();
 }
