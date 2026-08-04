@@ -5,7 +5,7 @@ import { Search, BookOpenText, TrendingUp, Compass, MonitorSmartphone, Baby, Bra
 import AppFooter from './layout/AppFooter.vue'
 import TopNavbar from './layout/TopNavbar.vue'
 import FeaturedBooksHero from './FeaturedBooksHero.vue'
-import { getBooks, getFeaturedCategories, getFileUrl } from '../services/api'
+import { getBooks, getBookCatalog, getFeaturedCategories, getFileUrl } from '../services/api'
 import { authUser } from '../stores/auth'
 import gsap from 'gsap'
 
@@ -90,16 +90,22 @@ const displayBooks = computed(() =>
 const activeCategory = ref('ALL')
 
 const featuredBooks = computed(() => {
-  if (activeCategory.value === 'ALL') {
-    return displayBooks.value.slice(0, 8)
-  }
-  return displayBooks.value
-    .filter(b => b.categories && b.categories.some(c => c.name === activeCategory.value))
-    .slice(0, 8)
+  return displayBooks.value.slice(0, 12)
 })
 
-function filterByCategory(name) {
-  activeCategory.value = activeCategory.value === name ? 'ALL' : name
+async function filterByCategory(name) {
+  if (activeCategory.value === name) {
+    activeCategory.value = 'ALL'
+  } else {
+    activeCategory.value = name
+  }
+  await loadBooks()
+}
+
+function goToCategoryLibrary(categoryName, event) {
+  if (event) event.stopPropagation()
+  const query = categoryName === 'ALL' ? {} : { category: categoryName }
+  router.push({ name: 'library', query })
 }
 
 function handleSearch(queryOverride) {
@@ -109,14 +115,22 @@ function handleSearch(queryOverride) {
   }
 }
 
-// The featured book logic is now handled inside FeaturedBooksHero.vue
 async function loadBooks() {
   isLoading.value = true
   errorMessage.value = ''
 
   try {
-    const payload = await getBooks()
-    books.value = Array.isArray(payload) ? payload : []
+    const params = { size: 24 }
+    if (activeCategory.value !== 'ALL') {
+      if (activeCategory.value.trim().toLowerCase() === 'sách điện tử') {
+        params.format = 'EBOOK'
+      } else {
+        params.category = activeCategory.value
+      }
+    }
+    const payload = await getBookCatalog(params)
+    const fetched = Array.isArray(payload?.content) ? payload.content : (Array.isArray(payload) ? payload : [])
+    books.value = fetched
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Không thể tải danh sách sách.'
   } finally {
@@ -258,7 +272,7 @@ onUnmounted(() => {
                 <div class="category-icon-wrapper">
                   <component :is="cat.icon" :size="26" stroke-width="1.5" class="category-icon" />
                 </div>
-                <div class="category-arrow-btn">
+                <div class="category-arrow-btn" @click.stop="goToCategoryLibrary(cat.name, $event)" title="Mở thể loại này trong Thư viện">
                   <ArrowUpRight :size="18" class="arrow-icon" />
                 </div>
               </div>
@@ -273,7 +287,19 @@ onUnmounted(() => {
         <!-- Featured Books Section -->
         <section class="section-container featured-section">
           <div class="section-header">
-            <h2 class="section-title">Sách nổi bật</h2>
+            <div class="section-title-group">
+              <h2 class="section-title">
+                {{ activeCategory === 'ALL' ? 'Sách nổi bật' : `Sách thuộc thể loại: ${activeCategory}` }}
+              </h2>
+              <button 
+                v-if="activeCategory !== 'ALL'" 
+                class="clear-category-badge" 
+                @click="filterByCategory('ALL')"
+                title="Bỏ lọc thể loại"
+              >
+                ✕ Bỏ lọc (Hiển thị tất cả)
+              </button>
+            </div>
             <button class="view-all-btn" @click="goToLibrary">
               Xem tất cả <ChevronRight :size="16" />
             </button>
@@ -801,6 +827,27 @@ onUnmounted(() => {
   border-color: #0f172a;
   box-shadow: 0 15px 40px -10px rgba(15, 23, 42, 0.15);
   transform: scale(1.02);
+}
+
+.clear-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-category-badge:hover {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
 }
 
 .categories-bento-grid.has-active .category-bento-card.is-active .category-icon-wrapper {
