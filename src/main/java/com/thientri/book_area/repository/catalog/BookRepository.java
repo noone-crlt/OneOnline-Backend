@@ -1,6 +1,7 @@
 package com.thientri.book_area.repository.catalog;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -72,4 +73,19 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 			Pageable pageable);
 
 	long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime start, LocalDateTime end);
+
+	@Query("""
+			SELECT
+				b.id AS bookId,
+				COALESCE(SUM(oi.quantity), 0) AS totalSold,
+				COALESCE(SUM(oi.price * oi.quantity), 0) AS totalRevenue
+			FROM OrderItem oi
+			JOIN oi.edition e
+			JOIN e.book b
+			JOIN oi.order o
+			WHERE o.status IN ('CONFIRMED', 'SUCCESS', 'DELIVERED', 'COMPLETED')
+			GROUP BY b.id
+			ORDER BY SUM(oi.quantity) DESC, SUM(oi.price * oi.quantity) DESC
+			""")
+	List<Object[]> findTopSellingBookStats(Pageable pageable);
 }

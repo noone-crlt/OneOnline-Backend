@@ -5,23 +5,32 @@ import gsap from 'gsap'
 import { PhUsers, PhBooks, PhBookOpenText, PhBookmarkSimple, PhPenNib, PhCurrencyDollar, PhChatCircleDots, PhWarningCircle, PhArrowsClockwise } from '@phosphor-icons/vue'
 
 import DashboardBarChart from '../../components/admin/DashboardBarChart.vue'
-import { getDashboardSummary, getMonthlyStats } from '../../services/adminDashboard'
-import { ApiError } from '../../services/api'
+import { getDashboardSummary, getMonthlyStats, getTopSellingBooks } from '../../services/adminDashboard'
+import { ApiError, getFileUrl } from '../../services/api'
 import { logout } from '../../stores/auth'
 
 const router = useRouter()
 
 const summary = ref(null)
 const monthlyStats = ref([])
+const topBooks = ref([])
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyStatsLoading = ref(true)
 const monthlyStatsError = ref('')
+const topBooksLoading = ref(true)
+const topBooksError = ref('')
 const granularity = ref('monthly')
 
 const compactNumber = new Intl.NumberFormat('vi-VN')
 const currencyNumber = {
   format: (value) => new Intl.NumberFormat('vi-VN').format(value) + ' VNĐ'
+}
+
+function resolveCover(url) {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return getFileUrl(url)
 }
 
 const summaryCards = computed(() => {
@@ -74,8 +83,25 @@ async function loadMonthlyStatsData() {
   }
 }
 
+async function loadTopBooksData() {
+  topBooksLoading.value = true
+  topBooksError.value = ''
+  try {
+    topBooks.value = await getTopSellingBooks(5)
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      await handleAuthFailure()
+      return
+    }
+    topBooks.value = []
+    topBooksError.value = 'Không thể tải danh sách sách bán chạy.'
+  } finally {
+    topBooksLoading.value = false
+  }
+}
+
 async function loadDashboard() {
-  await Promise.all([loadSummary(), loadMonthlyStatsData()])
+  await Promise.all([loadSummary(), loadMonthlyStatsData(), loadTopBooksData()])
   
   await nextTick()
   // GSAP Entrance Stagger
@@ -181,9 +207,80 @@ onMounted(loadDashboard)
               {{ card.value }}
             </div>
           </div>
-          <!-- Title outside and below -->
-          <div class="metric-label-outside">
-            {{ card.label }}
+        </div>
+      </div>
+
+      <!-- Top Selling Books Data Table -->
+      <div class="bento-card table-card bento-item">
+        <div class="card-title-outside table-header-flex">
+          <div>
+            <h3>Sách bán chạy nhất</h3>
+            <p>Danh sách các tác phẩm có số lượng bản bán ra và doanh thu cao nhất.</p>
+          </div>
+          <RouterLink to="/admin/books" class="view-all-link">
+            Quản lý kho sách &rarr;
+          </RouterLink>
+        </div>
+
+        <div class="card-surface table-surface">
+          <div v-if="topBooksLoading" class="table-loading-container">
+            <div class="table-spinner"></div>
+            <p>Đang tải dữ liệu sách bán chạy...</p>
+          </div>
+
+          <div v-else-if="topBooksError" class="table-error-state">
+            <span>{{ topBooksError }}</span>
+            <button class="action-btn small-btn" @click="loadTopBooksData">Thử lại</button>
+          </div>
+
+          <div v-else-if="topBooks.length === 0" class="table-empty-state">
+            Chưa có dữ liệu giao dịch bán hàng.
+          </div>
+
+          <div v-else class="responsive-table-wrapper">
+            <table class="dashboard-table">
+              <thead>
+                <tr>
+                  <th class="col-rank">#</th>
+                  <th class="col-book">Tác phẩm</th>
+                  <th class="col-author">Tác giả</th>
+                  <th class="col-category">Thể loại</th>
+                  <th class="col-sold text-center">Đã bán</th>
+                  <th class="col-revenue text-right">Tổng doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(book, index) in topBooks" :key="book.bookId">
+                  <td class="col-rank">
+                    <span :class="['rank-badge', `rank-${index + 1}`]">#{{ index + 1 }}</span>
+                  </td>
+                  <td class="col-book">
+                    <div class="book-cell">
+                      <div class="book-thumb">
+                        <img v-if="resolveCover(book.coverUrl)" :src="resolveCover(book.coverUrl)" :alt="book.title" />
+                        <div v-else class="book-thumb-fallback">{{ book.title?.charAt(0) || 'S' }}</div>
+                      </div>
+                      <div class="book-info">
+                        <span class="book-title-text" :title="book.title">{{ book.title }}</span>
+                        <span class="book-id-tag">ID: #{{ book.bookId }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="col-author">
+                    <span class="text-truncate" :title="book.authorName">{{ book.authorName }}</span>
+                  </td>
+                  <td class="col-category">
+                    <span class="category-chip">{{ book.categoryName }}</span>
+                  </td>
+                  <td class="col-sold text-center">
+                    <span class="sold-badge">{{ compactNumber.format(book.totalSold || 0) }} bản</span>
+                  </td>
+                  <td class="col-revenue text-right">
+                    <strong class="revenue-amount">{{ currencyNumber.format(book.totalRevenue || 0) }}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -530,5 +627,212 @@ onMounted(loadDashboard)
 .error-state p {
   color: var(--text-muted);
   margin: 0;
+}
+
+/* Table Bento Card & Custom Table Styles */
+.table-card {
+  grid-column: 1 / -1;
+}
+
+.table-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.view-all-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6366f1;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+.table-surface {
+  padding: 0;
+  overflow: hidden;
+}
+
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.dashboard-table th {
+  padding: 0.9rem 1.25rem;
+  background-color: var(--surface-soft, #f8fafc);
+  color: var(--text-muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--bento-border, #e2e8f0);
+}
+
+.dashboard-table td {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--bento-border, #f1f5f9);
+  vertical-align: middle;
+  color: var(--text-strong, #0f172a);
+}
+
+.dashboard-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.dashboard-table tbody tr:hover {
+  background-color: rgba(99, 102, 241, 0.03);
+}
+
+.dashboard-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.rank-badge.rank-1 {
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 100%);
+  color: #78350f;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.rank-badge.rank-2 {
+  background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+  color: #1e293b;
+  box-shadow: 0 2px 6px rgba(148, 163, 184, 0.3);
+}
+
+.rank-badge.rank-3 {
+  background: linear-gradient(135deg, #ffedd5 0%, #d97706 100%);
+  color: #7c2d12;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);
+}
+
+.book-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.book-thumb {
+  width: 42px;
+  height: 58px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #f1f5f9;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.book-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book-thumb-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+.book-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 260px;
+}
+
+.book-title-text {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-id-tag {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-family: var(--font-mono, monospace);
+}
+
+.category-chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sold-badge {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 6px;
+  background-color: #ecfdf5;
+  color: #059669;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.revenue-amount {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.table-loading-container,
+.table-empty-state,
+.table-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  color: #64748b;
+  gap: 0.75rem;
+}
+
+.table-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(99, 102, 241, 0.15);
+  border-radius: 50%;
+  border-top-color: #6366f1;
+  animation: spin 1s linear infinite;
 }
 </style>

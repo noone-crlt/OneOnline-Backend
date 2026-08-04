@@ -32,4 +32,10 @@ public class AdminDashboardController {
 			@RequestParam(defaultValue = "monthly") String granularity) {
 		return ResponseEntity.ok(ApiResponse.success(dashboardService.getChartStats(granularity)));
 	}
+
+	@GetMapping("/top-books")
+	public ResponseEntity<ApiResponse<List<com.thientri.book_area.dto.response.admin.AdminTopBookResponse>>> getTopSellingBooks(
+			@RequestParam(defaultValue = "5") int limit) {
+		return ResponseEntity.ok(ApiResponse.success(dashboardService.getTopSellingBooks(limit)));
+	}
 }
