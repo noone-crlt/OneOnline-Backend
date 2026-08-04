@@ -296,6 +296,33 @@ export function deleteAdminCategory(categoryId) {
   })
 }
 
+export function getAuthors() {
+  return apiFetch('/api/authors')
+}
+
+export function createAdminAuthor(data) {
+  return apiFetch('/api/authors', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: data,
+  })
+}
+
+export function updateAdminAuthor(authorId, data) {
+  return apiFetch(`/api/authors/${authorId}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: data,
+  })
+}
+
+export function deleteAdminAuthor(authorId) {
+  return apiFetch(`/api/authors/${authorId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
 export function getBookBySlug(slug, init = {}) {
   return apiFetch(`/api/books/${slug}`, init)
 }
