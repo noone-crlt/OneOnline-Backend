@@ -43,7 +43,7 @@ Notify.init({
   },
 })
 
-// Cấu hình Confirm (Hộp thoại xác nhận)
+// Cấu hình Confirm (Hộp thoại xác nhận & Prompt)
 Confirm.init({
   width: '380px',
   borderRadius: '14px',
@@ -84,6 +84,25 @@ export function confirmDialog(title, message, okText = 'Xác nhận', cancelText
       cancelText,
       () => resolve(true),
       () => resolve(false),
+      {}
+    )
+  })
+}
+
+export function promptDialog(title, message, defaultValue = '', okText = 'Xác nhận', cancelText = 'Hủy') {
+  return new Promise((resolve) => {
+    Confirm.prompt(
+      title,
+      message,
+      defaultValue,
+      okText,
+      cancelText,
+      (clientAnswer) => {
+        resolve(clientAnswer)
+      },
+      () => {
+        resolve(null)
+      },
       {}
     )
   })

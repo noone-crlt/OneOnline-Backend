@@ -9,7 +9,7 @@ import {
   PhUser,
 } from '@phosphor-icons/vue'
 import { getAdminUsers, toggleBanAdminUser } from '../../services/api'
-import notify, { confirmDialog } from '../../services/toast'
+import notify, { confirmDialog, promptDialog } from '../../services/toast'
 
 const users = ref([])
 const totalUsers = ref(0)
@@ -62,9 +62,12 @@ async function handleToggleBan(user) {
       notify.error(error instanceof Error ? error.message : 'Không thể gỡ khóa tài khoản.')
     }
   } else {
-    const reasonInput = window.prompt(
-      `Nhập lý do khóa tài khoản cho người dùng "${user.fullName || user.email}":`,
-      'Vi phạm quy định sử dụng hệ thống.'
+    const reasonInput = await promptDialog(
+      'Khóa tài khoản người dùng',
+      `Nhập lý do khóa tài khoản cho "${user.fullName || user.email}":`,
+      'Vi phạm quy định sử dụng hệ thống.',
+      'Khóa tài khoản',
+      'Hủy'
     )
     if (reasonInput === null) return
 
