@@ -19,7 +19,6 @@ const isSignedIn = computed(() => Boolean(authUser.value))
 function handleNavClick(item) {
   if (item.to.startsWith('/#')) {
     if (route.path === '/') {
-      // scroll manually if already on home
       const id = item.to.replace('/#', '')
       const el = document.getElementById(id)
       if (el) {
@@ -82,16 +81,63 @@ watch(authIsAuthenticated, () => {
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
           </svg>
           <span class="cart-badge-count" v-if="cartItemCount > 0">{{ cartItemCount }}</span>
-
         </button>
 
         <template v-if="!isSignedIn">
           <RouterLink class="topbar-utility" to="/login">Đăng nhập</RouterLink>
         </template>
         <template v-else>
+          <RouterLink class="my-library-btn" to="/library" :class="{ active: route.path === '/library' }">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Thư viện của tôi</span>
+          </RouterLink>
           <UserDropdown />
         </template>
       </div>
     </div>
   </header>
 </template>
+
+<style scoped>
+.my-library-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 99px;
+  background-color: #f4f4f5;
+  color: #18181b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e4e4e7;
+  white-space: nowrap;
+}
+
+.my-library-btn:hover {
+  background-color: #09090b;
+  color: #ffffff;
+  border-color: #09090b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.my-library-btn.active {
+  background-color: #09090b;
+  color: #ffffff;
+  border-color: #09090b;
+}
+
+@media (max-width: 640px) {
+  .my-library-btn span {
+    display: none;
+  }
+  .my-library-btn {
+    padding: 0.45rem;
+    border-radius: 50%;
+  }
+}
+</style>
