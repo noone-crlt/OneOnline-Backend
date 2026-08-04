@@ -1,107 +1,69 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import TopNavbar from './layout/TopNavbar.vue'
-import { getBookCatalog, getCategories, getFileUrl } from '../services/api'
+import AppFooter from './layout/AppFooter.vue'
+import { getUserLibrary, getFileUrl } from '../services/api'
+import { authUser } from '../stores/auth'
 
 const router = useRouter()
-const route = useRoute()
-const searchQuery = ref(route.query.q || '')
+const searchQuery = ref('')
 const activeFormat = ref('ALL')
-const activeCategory = ref(route.query.category || 'ALL')
-const books = ref([])
-const categories = ref([])
-const totalBooks = ref(0)
-const isLoading = ref(false)
+const purchasedBooks = ref([])
+const isLoading = ref(true)
 const errorMessage = ref('')
-let searchTimer = null
-let activeRequest = null
 
 const formatFilters = [
   { label: 'Tất cả', value: 'ALL' },
-  { label: 'Sách giấy', value: 'PHYSICAL' },
   { label: 'Sách điện tử', value: 'EBOOK' },
   { label: 'Sách nói', value: 'AUDIOBOOK' },
+  { label: 'Sách giấy', value: 'PHYSICAL' },
 ]
 
-// Resolve nested data from editions
-const displayBooks = computed(() =>
-  books.value.map((book) => {
-    const initials = getInitials(book.title)
-    
-    // Resolve cover image: first available edition cover or main imageUrl
-    let cover = ''
-    if (book.editions && book.editions.length > 0) {
-      const coverEd = book.editions.find(e => e.coverObjectName)
-      if (coverEd) cover = coverEd.coverUrl || getFileUrl(coverEd.coverObjectName)
+const filteredBooks = computed(() => {
+  return purchasedBooks.value.filter((item) => {
+    // Lọc theo từ khóa tìm kiếm
+    const matchesSearch =
+      !searchQuery.value.trim() ||
+      (item.bookTitle && item.bookTitle.toLowerCase().includes(searchQuery.value.toLowerCase().trim())) ||
+      (item.authorName && item.authorName.toLowerCase().includes(searchQuery.value.toLowerCase().trim()))
+
+    // Lọc theo định dạng
+    let matchesFormat = true
+    if (activeFormat.value === 'EBOOK') {
+      matchesFormat = item.format === 'EBOOK_PDF' || item.format === 'EBOOK_EPUB' || item.format === 'EBOOK'
+    } else if (activeFormat.value === 'AUDIOBOOK') {
+      matchesFormat = item.format === 'AUDIOBOOK'
+    } else if (activeFormat.value === 'PHYSICAL') {
+      matchesFormat = item.format === 'PHYSICAL'
     }
-    if (!cover && book.imageUrls && book.imageUrls.length > 0) {
-      cover = getFileUrl(book.imageUrls[0])
-    }
 
-    // Resolve format lists
-    const formats = book.editions ? book.editions.map(e => e.format) : []
-    
-    // Resolve price range or minimum price
-    let prices = book.editions ? book.editions.map(e => Number(e.salePrice)).filter(p => !isNaN(p)) : []
-    let minPrice = prices.length > 0 ? Math.min(...prices) : null
-    let maxPrice = prices.length > 0 ? Math.max(...prices) : null
+    return matchesSearch && matchesFormat
+  })
+})
 
-    // Check stock
-    const isOutOfStock = book.editions ? book.editions.every(e => e.format === 'PHYSICAL' && (!e.stock || e.stock <= 0)) : false
+async function fetchLibrary() {
+  if (!authUser.value) {
+    isLoading.value = false
+    return
+  }
 
-    return {
-      ...book,
-      initials,
-      coverUrl: cover,
-      formats,
-      minPrice,
-      maxPrice,
-      isOutOfStock,
-      description: book.description || 'Chưa có mô tả tóm tắt cho tác phẩm này.',
-      publisherName: book.publisherName || 'One Online'
-    }
-  }),
-)
-
-async function loadBooks() {
-  activeRequest?.abort()
-  const controller = new AbortController()
-  activeRequest = controller
   isLoading.value = true
   errorMessage.value = ''
-
   try {
-    const payload = await getBookCatalog({
-      q: searchQuery.value,
-      category: activeCategory.value === 'ALL' ? '' : activeCategory.value,
-      format: activeFormat.value === 'ALL' ? '' : activeFormat.value,
-      page: 0,
-      size: 100,
-    }, { signal: controller.signal })
-
-    books.value = Array.isArray(payload?.content) ? payload.content : []
-    totalBooks.value = Number(payload?.totalElements ?? books.value.length)
+    const list = await getUserLibrary(0, 100)
+    purchasedBooks.value = Array.isArray(list) ? list : []
   } catch (error) {
-    if (error?.name !== 'AbortError') {
-      errorMessage.value = error instanceof Error ? error.message : 'Không thể tải danh sách sách.'
-    }
+    errorMessage.value = error instanceof Error ? error.message : 'Không thể tải thư viện sách cá nhân.'
   } finally {
-    if (activeRequest === controller) {
-      isLoading.value = false
-    }
+    isLoading.value = false
   }
 }
 
-async function loadCategories() {
-  try {
-    const payload = await getCategories()
-    categories.value = Array.isArray(payload)
-      ? payload.map((category) => category.name).filter(Boolean)
-      : []
-  } catch {
-    categories.value = []
-  }
+function resolveCover(item) {
+  if (item.coverUrl) return item.coverUrl
+  if (item.coverImageUrl) return getFileUrl(item.coverImageUrl)
+  return ''
 }
 
 function getInitials(title) {
@@ -109,78 +71,28 @@ function getInitials(title) {
   return title.trim().split(/\s+/).slice(0, 2).map((word) => word.charAt(0)).join('').toUpperCase()
 }
 
-function formatPriceRange(book) {
-  if (book.minPrice == null) return 'Đang cập nhật'
-  if (book.minPrice === book.maxPrice) {
-    return formatPrice(book.minPrice)
-  }
-  return `${formatPrice(book.minPrice)} - ${formatPrice(book.maxPrice)}`
+function getFormatBadgeLabel(format) {
+  if (format === 'AUDIOBOOK') return 'AUDIOBOOK'
+  if (format === 'PHYSICAL') return 'SÁCH GIẤY'
+  return 'E-BOOK'
 }
 
-function formatPrice(price) {
-  if (price == null) return ''
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0
-  }).format(Number(price))
+function getFormatBadgeClass(format) {
+  if (format === 'AUDIOBOOK') return 'badge-audio'
+  if (format === 'PHYSICAL') return 'badge-physical'
+  return 'badge-ebook'
 }
 
-function formatFormatLabel(format) {
-  switch (format) {
-    case 'PHYSICAL': return '📖 Sách giấy'
-    case 'EBOOK_PDF': return '📱 PDF E-book'
-    case 'EBOOK_EPUB': return '📱 EPUB E-book'
-    case 'AUDIOBOOK': return '🎧 Sách nói'
-    default: return format
-  }
-}
-
-function openBookDetail(slug) {
-  router.push(`/book/${slug}`)
-}
-
-function toggleFormat(val) {
-  if (val === 'ALL') {
-    activeFormat.value = 'ALL'
+function handleAction(item) {
+  if (item.format === 'PHYSICAL') {
+    router.push(`/book/${item.slug}`)
   } else {
-    activeFormat.value = activeFormat.value === val ? 'ALL' : val
+    router.push(`/read/${item.slug}`)
   }
 }
 
-function toggleCategory(cat) {
-  if (cat === 'ALL') {
-    activeCategory.value = 'ALL'
-  } else {
-    activeCategory.value = activeCategory.value === cat ? 'ALL' : cat
-  }
-}
-
-watch(searchQuery, () => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(loadBooks, 300)
-})
-
-watch([activeFormat, activeCategory], loadBooks)
-
-watch(() => route.query.q, (newQ) => {
-  if (newQ !== undefined) {
-    searchQuery.value = newQ
-  }
-})
-
-watch(() => route.query.category, (newCategory) => {
-  activeCategory.value = newCategory || 'ALL'
-})
-
-onMounted(async () => {
-  await loadCategories()
-  await loadBooks()
-})
-
-onBeforeUnmount(() => {
-  clearTimeout(searchTimer)
-  activeRequest?.abort()
+onMounted(() => {
+  fetchLibrary()
 })
 </script>
 
@@ -189,16 +101,16 @@ onBeforeUnmount(() => {
     <TopNavbar />
 
     <main class="library-main-area">
-      <!-- Minimalist Hero Search Section -->
+      <!-- Minimalist Hero Section -->
       <section class="library-hero" aria-labelledby="library-title">
         <div class="library-hero-copy">
-          <p class="library-kicker">ONE ONLINE STORE</p>
-          <h1 id="library-title">Khám phá kho sách trực tuyến</h1>
+          <p class="library-kicker">THƯ VIỆN CỦA TÔI</p>
+          <h1 id="library-title">Kho sách đã sở hữu</h1>
           <p class="library-subtext">
-            Tìm kiếm nhanh chóng, chọn định dạng yêu thích và bắt đầu trải nghiệm đọc.
+            Quản lý, đọc và nghe tất cả các tác phẩm sách điện tử, sách nói và sách giấy bạn đã sở hữu.
           </p>
 
-          <form class="library-search" role="search" @submit.prevent>
+          <form v-if="authUser && purchasedBooks.length > 0" class="library-search" role="search" @submit.prevent>
             <div class="search-field">
               <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
                 <path
@@ -213,179 +125,119 @@ onBeforeUnmount(() => {
                 id="library-search-input"
                 v-model="searchQuery"
                 type="search"
-                placeholder="Tìm tựa sách, tác giả, nhà xuất bản..."
-                aria-label="Tìm kiếm trong thư viện"
+                placeholder="Tìm sách trong thư viện của bạn..."
+                aria-label="Tìm kiếm trong thư viện cá nhân"
               />
             </div>
           </form>
         </div>
       </section>
 
-      <!-- Catalog grid with Filters -->
-      <section id="catalog" class="catalog-section" aria-labelledby="catalog-title">
-        <div class="catalog-controls">
-          <div class="catalog-intro-title">
-            <h2 id="catalog-title">Tất cả tác phẩm</h2>
-            <p class="catalog-count">{{ totalBooks }} tác phẩm được tìm thấy</p>
-          </div>
-
-          <div class="catalog-filter-groups">
-            <div class="filter-group">
-              <span class="filter-group-label">Định dạng</span>
-              <div class="mood-filter" aria-label="Lọc sách theo định dạng">
-                <button
-                  v-for="filter in formatFilters"
-                  :key="filter.value"
-                  type="button"
-                  :class="{ active: activeFormat === filter.value }"
-                  @click="toggleFormat(filter.value)"
-                >
-                  {{ filter.label }}
-                </button>
-              </div>
-            </div>
-
-            <div v-if="categories.length" class="filter-group">
-              <span class="filter-group-label">Thể loại</span>
-              <div class="mood-filter mood-filter-categories" aria-label="Lọc sách theo thể loại">
-                <button
-                  type="button"
-                  :class="{ active: activeCategory === 'ALL' }"
-                  @click="toggleCategory('ALL')"
-                >
-                  Tất cả
-                </button>
-                <button
-                  v-for="category in categories"
-                  :key="category"
-                  type="button"
-                  :class="{ active: activeCategory === category }"
-                  @click="toggleCategory(category)"
-                >
-                  {{ category }}
-                </button>
-              </div>
-            </div>
-          </div>
+      <!-- Main Content Area -->
+      <section class="catalog-section">
+        <!-- NOT LOGGED IN STATE -->
+        <div v-if="!authUser" class="empty-state empty-state-action">
+          <div class="empty-icon-circle">🔒</div>
+          <h3>Vui lòng đăng nhập</h3>
+          <p>Bạn cần đăng nhập tài khoản để truy cập kho sách cá nhân của mình.</p>
+          <RouterLink to="/login" class="btn btn-primary-action">Đăng nhập ngay</RouterLink>
         </div>
 
-        <!-- Books Grid -->
-        <div class="book-list-container">
+        <!-- LOGGED IN CONTENT -->
+        <template v-else>
+          <!-- Controls Header -->
+          <div v-if="purchasedBooks.length > 0" class="catalog-controls">
+            <div class="catalog-intro-title">
+              <h2>Sách đã mua ({{ filteredBooks.length }})</h2>
+            </div>
+
+            <div class="mood-filter">
+              <button
+                v-for="filter in formatFilters"
+                :key="filter.value"
+                type="button"
+                :class="{ active: activeFormat === filter.value }"
+                @click="activeFormat = filter.value"
+              >
+                {{ filter.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading State -->
           <div v-if="isLoading" class="empty-state">
             <div class="spinner"></div>
-            <p>Đang tải dữ liệu từ kệ sách...</p>
+            <p>Đang tải danh sách sách đã mua của bạn...</p>
           </div>
 
+          <!-- Error State -->
           <div v-else-if="errorMessage" class="empty-state empty-state-action">
-            <span>Không thể tải kệ sách: {{ errorMessage }}</span>
-            <button type="button" class="btn btn-secondary" @click="loadBooks">Tải lại</button>
+            <span>{{ errorMessage }}</span>
+            <button type="button" class="btn btn-secondary" @click="fetchLibrary">Tải lại</button>
           </div>
 
-          <div v-else-if="books.length === 0" class="empty-state">
-            Hiện tại cửa hàng chưa có tác phẩm trực tuyến. Vui lòng quay lại sau.
+          <!-- Empty Purchased Books State -->
+          <div v-else-if="purchasedBooks.length === 0" class="empty-state empty-state-action">
+            <div class="empty-icon-circle">📚</div>
+            <h3>Thư viện của bạn đang trống</h3>
+            <p>Bạn chưa sở hữu tác phẩm nào. Hãy khám phá kho sách và mua ngay để thưởng thức!</p>
+            <RouterLink to="/" class="btn btn-primary-action">Khám phá sách ngay</RouterLink>
           </div>
 
-          <div v-else-if="displayBooks.length === 0" class="empty-state">
-            Không tìm thấy cuốn sách nào khớp với tìm kiếm của bạn.
+          <!-- No Search Results -->
+          <div v-else-if="filteredBooks.length === 0" class="empty-state">
+            Không tìm thấy cuốn sách nào khớp với cụm từ tìm kiếm của bạn.
           </div>
 
+          <!-- Grid of Purchased Books -->
           <div v-else class="editorial-books-grid">
             <article
-              v-for="book in displayBooks"
-              :key="book.id ?? book.title"
-              class="book-card"
-              @click="openBookDetail(book.slug)"
+              v-for="item in filteredBooks"
+              :key="item.id || item.slug"
+              class="purchased-book-card"
             >
-              <!-- Book Cover Thumbnail -->
-              <div class="book-card-cover">
-                <img v-if="book.coverUrl" :src="book.coverUrl" :alt="`Bìa sách ${book.title}`" loading="lazy" />
-                <strong v-else class="cover-placeholder">{{ book.initials }}</strong>
-                
-                <!-- Format badges overlay -->
-                <div class="format-badges" v-if="book.formats && book.formats.length > 0">
-                  <span v-for="f in book.formats" :key="f" :class="['mini-badge', f.toLowerCase()]" :title="formatFormatLabel(f)">
-                    {{ f === 'PHYSICAL' ? 'PHYS' : f === 'AUDIOBOOK' ? 'AUDIO' : 'E-BOOK' }}
-                  </span>
+              <div class="book-cover-wrapper" @click="handleAction(item)">
+                <img v-if="resolveCover(item)" :src="resolveCover(item)" :alt="item.bookTitle" />
+                <div v-else class="cover-placeholder-box">
+                  {{ getInitials(item.bookTitle) }}
                 </div>
+                <span class="format-badge" :class="getFormatBadgeClass(item.format)">
+                  {{ getFormatBadgeLabel(item.format) }}
+                </span>
               </div>
 
-              <!-- Book Copy Metadata -->
-              <div class="book-card-meta">
-                <p class="book-authors-line" v-if="book.authorNames && book.authorNames.length > 0">
-                  {{ book.authorNames.join(', ') }}
-                </p>
-                <h3 class="book-card-title">{{ book.title }}</h3>
-                <p class="book-publisher">{{ book.publisherName }}</p>
-                
-                <div class="book-card-footer">
-                  <span class="book-price">{{ formatPriceRange(book) }}</span>
-                  <span class="book-stock-tag" :class="{ 'out-of-stock': book.isOutOfStock }">
-                    {{ book.isOutOfStock ? 'Hết hàng' : 'Có sẵn' }}
-                  </span>
-                </div>
+              <div class="book-card-info">
+                <h3 class="purchased-book-title" :title="item.bookTitle">{{ item.bookTitle }}</h3>
+                <p class="purchased-book-author">{{ item.authorName || 'One Online' }}</p>
+
+                <button class="action-read-btn" :class="getFormatBadgeClass(item.format)" @click="handleAction(item)">
+                  <template v-if="item.format === 'AUDIOBOOK'">🎧 Nghe ngay</template>
+                  <template v-else-if="item.format === 'PHYSICAL'">📦 Xem chi tiết</template>
+                  <template v-else>📖 Đọc ngay</template>
+                </button>
               </div>
             </article>
           </div>
-        </div>
+        </template>
       </section>
     </main>
+
+    <AppFooter />
   </div>
 </template>
 
 <style scoped>
 .library-shell {
   min-height: 100vh;
-  background-color: var(--page-bg);
+  background-color: var(--page-bg, #fafafa);
   display: flex;
   flex-direction: column;
 }
 
-
-
-.topbar-nav {
-  display: flex;
-  gap: 2rem;
-}
-
-.nav-link {
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--text-soft);
-  font-weight: 500;
-  padding: 0.25rem 0;
-  transition: color 200ms ease;
-}
-
-.nav-link:hover, .nav-link.active {
-  color: var(--text-strong);
-}
-
-.topbar-utility {
-  display: inline-flex;
-  align-items: center;
-  height: 38px;
-  padding: 0 1.2rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--text-strong);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-  transition: background-color 200ms ease, border-color 200ms ease;
-}
-
-.topbar-utility:hover {
-  background-color: var(--surface-soft);
-  border-color: var(--accent);
-}
-
-/* Main Area Container */
 .library-main-area {
   flex: 1;
   width: 100%;
-  max-width: var(--content-width);
+  max-width: var(--content-width, 1200px);
   margin: 0 auto;
   padding: 2.5rem 2rem 5rem;
 }
@@ -394,36 +246,34 @@ onBeforeUnmount(() => {
 .library-hero {
   text-align: center;
   max-width: 650px;
-  margin: 0 auto 4rem;
+  margin: 0 auto 3rem;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
 .library-kicker {
-  font-family: var(--font-body);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--accent);
+  color: var(--accent, #059669);
   font-weight: 700;
   margin-bottom: 0.75rem;
 }
 
 .library-hero h1 {
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2rem, 4vw, 2.75rem);
   line-height: 1.15;
-  color: var(--text-strong);
-  margin-bottom: 1rem;
-  font-weight: 500;
+  color: #09090b;
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .library-subtext {
-  font-family: var(--font-body);
   font-size: 1.05rem;
-  color: var(--text-soft);
-  margin-bottom: 2rem;
+  color: #71717a;
+  margin-bottom: 1.75rem;
 }
 
 .library-search {
@@ -440,7 +290,7 @@ onBeforeUnmount(() => {
   left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-soft);
+  color: #a1a1aa;
   pointer-events: none;
 }
 
@@ -448,141 +298,128 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 52px;
   padding: 0 1.5rem 0 3.2rem;
-  background-color: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
+  background-color: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 99px;
   font-size: 0.98rem;
-  color: var(--text-strong);
-  box-shadow: var(--shadow-soft);
+  color: #09090b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: all 200ms ease;
 }
 
 .search-field input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(47, 79, 62, 0.06);
+  border-color: #09090b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-/* Catalog header and filter styling */
+/* Catalog section */
 .catalog-section {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid #e4e4e7;
   padding-top: 2.5rem;
 }
 
 .catalog-controls {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   margin-bottom: 2.5rem;
   flex-wrap: wrap;
   gap: 1.5rem;
 }
 
 .catalog-intro-title h2 {
-  font-family: var(--font-display);
-  font-size: 1.8rem;
-  color: var(--text-strong);
-  font-weight: 500;
-  margin-bottom: 0.3rem;
-}
-
-.catalog-count {
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--text-soft);
-}
-
-.catalog-filter-groups {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.8rem;
-  max-width: min(850px, 100%);
-  overflow: hidden;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.filter-group-label {
-  flex: 0 0 auto;
-  font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: 1.5rem;
+  color: #09090b;
   font-weight: 700;
-  color: var(--text-soft);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 0;
 }
 
 .mood-filter {
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
   gap: 0.5rem;
-  background-color: var(--surface-soft);
+  background-color: #f4f4f5;
   padding: 0.3rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-soft);
-  /* Hide scrollbar */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  max-width: 100%;
-}
-
-.mood-filter::-webkit-scrollbar {
-  display: none;
+  border-radius: 99px;
+  border: 1px solid #e4e4e7;
 }
 
 .mood-filter button {
-  flex-shrink: 0;
   padding: 0.45rem 1.2rem;
-  font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-soft);
-  border-radius: var(--radius-sm);
+  color: #71717a;
+  border-radius: 99px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
   transition: all 200ms ease;
 }
 
 .mood-filter button.active {
-  background-color: var(--accent);
-  color: var(--surface);
-  box-shadow: none;
+  background-color: #09090b;
+  color: #ffffff;
 }
 
-.mood-filter-categories {
-  justify-content: flex-end;
-}
-
-/* Spinner and loading */
-.book-list-container {
-  min-height: 300px;
-}
-
+/* Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 250px;
-  font-family: var(--font-body);
-  color: var(--text-soft);
+  color: #71717a;
   text-align: center;
+}
+
+.empty-state-action {
+  background: #ffffff;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  border: 1px dashed #d4d4d8;
+}
+
+.empty-icon-circle {
+  font-size: 2.75rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state-action h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #09090b;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-action p {
+  color: #71717a;
+  max-width: 440px;
+  margin-bottom: 1.25rem;
+}
+
+.btn-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.75rem;
+  border-radius: 99px;
+  background: #09090b;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.btn-primary-action:hover {
+  background: #27272a;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(43, 33, 24, 0.1);
+  border: 3px solid rgba(0, 0, 0, 0.1);
   border-radius: 50%;
-  border-top-color: var(--accent);
+  border-top-color: #09090b;
   animation: spin 1s ease-in-out infinite;
   margin-bottom: 1rem;
 }
@@ -591,193 +428,143 @@ onBeforeUnmount(() => {
   to { transform: rotate(360deg); }
 }
 
-.empty-state-action button {
-  margin-top: 1rem;
-}
-
-/* Editorial E-commerce Books Grid */
+/* Purchased Books Grid */
 .editorial-books-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 2.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 2rem;
 }
 
-.book-card {
+.purchased-book-card {
   display: flex;
   flex-direction: column;
-  background-color: var(--surface);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-md);
-  padding: 0.95rem;
-  cursor: pointer;
-  box-shadow: var(--shadow-soft);
-  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.book-card:hover {
+.purchased-book-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-strong);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
 
-.book-card-cover {
+.book-cover-wrapper {
+  position: relative;
   width: 100%;
   aspect-ratio: 2/3;
-  border-radius: 4px;
-  background-color: var(--surface-soft);
+  border-radius: 8px;
   overflow: hidden;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
-  box-shadow: 0 4px 12px rgba(43, 33, 24, 0.06);
+  background-color: #f4f4f5;
+  cursor: pointer;
+  margin-bottom: 0.85rem;
 }
 
-.book-card-cover img {
+.book-cover-wrapper img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.cover-placeholder {
-  font-family: var(--font-display);
-  font-size: 2.2rem;
-  font-weight: 600;
-  color: var(--text-soft);
-  opacity: 0.4;
-}
-
-.format-badges {
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+.cover-placeholder-box {
+  width: 100%;
+  height: 100%;
   display: flex;
-  gap: 0.25rem;
-}
-
-.mini-badge {
-  border-radius: 4px;
-  padding: 0.15rem 0.35rem;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 700;
-  border: 1px solid var(--line-soft);
-  text-transform: uppercase;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 22px;
-}
-.mini-badge.physical {
-  background-color: var(--pastel-green-bg);
-  color: var(--pastel-green-text);
-  border-color: rgba(52, 101, 56, 0.15);
-}
-.mini-badge.audiobook {
-  background-color: var(--pastel-yellow-bg);
-  color: var(--pastel-yellow-text);
-  border-color: rgba(149, 100, 0, 0.15);
-}
-.mini-badge.ebook_pdf, .mini-badge.ebook_epub {
-  background-color: var(--pastel-blue-bg);
-  color: var(--pastel-blue-text);
-  border-color: rgba(31, 108, 159, 0.15);
+  font-family: var(--font-display, serif);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #71717a;
 }
 
-.book-card-meta {
+.format-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.format-badge.badge-ebook {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.format-badge.badge-audio {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.format-badge.badge-physical {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.book-card-info {
   display: flex;
   flex-direction: column;
   flex: 1;
 }
 
-.book-authors-line {
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  color: var(--text-soft);
-  margin-bottom: 0.25rem;
+.purchased-book-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #09090b;
+  margin: 0 0 0.25rem 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.book-card-title {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 500;
-  color: var(--text-strong);
-  margin-bottom: 0.25rem;
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 2.5rem;
+.purchased-book-author {
+  font-size: 0.82rem;
+  color: #71717a;
+  margin: 0 0 1rem 0;
 }
 
-.book-publisher {
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent);
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-
-.book-card-footer {
+.action-read-btn {
   margin-top: auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid var(--line-soft);
-  padding-top: 0.75rem;
-}
-
-.book-price {
-  font-family: var(--font-body);
-  font-size: 0.92rem;
+  width: 100%;
+  padding: 0.55rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.85rem;
   font-weight: 700;
-  color: var(--text-strong);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.book-stock-tag {
-  font-family: var(--font-body);
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  background-color: var(--pastel-green-bg);
-  color: var(--pastel-green-text);
-  border: 1px solid rgba(52, 101, 56, 0.1);
+.action-read-btn.badge-ebook {
+  background: #2563eb;
+  color: #ffffff;
 }
 
-.book-stock-tag.out-of-stock {
-  background-color: var(--pastel-red-bg);
-  color: var(--pastel-red-text);
-  border: 1px solid rgba(159, 47, 45, 0.1);
+.action-read-btn.badge-ebook:hover {
+  background: #1d4ed8;
 }
 
-/* Mobile adjustments */
-@media (max-width: 600px) {
-  .catalog-controls {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+.action-read-btn.badge-audio {
+  background: #d97706;
+  color: #ffffff;
+}
 
-  .catalog-filter-groups,
-  .filter-group {
-    width: 100%;
-    align-items: flex-start;
-  }
+.action-read-btn.badge-audio:hover {
+  background: #b45309;
+}
 
-  .filter-group {
-    flex-direction: column;
-  }
+.action-read-btn.badge-physical {
+  background: #059669;
+  color: #ffffff;
+}
 
-  .mood-filter,
-  .mood-filter-categories {
-    width: 100%;
-    justify-content: flex-start;
-  }
+.action-read-btn.badge-physical:hover {
+  background: #047857;
 }
 </style>
