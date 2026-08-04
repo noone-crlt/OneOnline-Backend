@@ -27,12 +27,12 @@ import com.thientri.book_area.repository.user.UserRepository;
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthFilter;
-	private final List<String> allowedOriginPatterns;
+	private final String allowedOriginPatternsRaw;
 
 	public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-			@Value("${app.cors.allowed-origin-patterns}") List<String> allowedOriginPatterns) {
+			@Value("${app.cors.allowed-origin-patterns:*}") String allowedOriginPatternsRaw) {
 		this.jwtAuthFilter = jwtAuthFilter;
-		this.allowedOriginPatterns = allowedOriginPatterns;
+		this.allowedOriginPatternsRaw = allowedOriginPatternsRaw;
 	}
 
 	@Bean
@@ -103,11 +103,13 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowCredentials(true);
-		if (allowedOriginPatterns == null || allowedOriginPatterns.isEmpty()) {
-			configuration.setAllowedOriginPatterns(List.of("*"));
-		} else {
-			configuration.setAllowedOriginPatterns(allowedOriginPatterns);
-		}
+		List<String> patterns = (allowedOriginPatternsRaw == null || allowedOriginPatternsRaw.isBlank())
+				? List.of("*")
+				: java.util.Arrays.stream(allowedOriginPatternsRaw.split(","))
+						.map(String::trim)
+						.filter(s -> !s.isEmpty())
+						.toList();
+		configuration.setAllowedOriginPatterns(patterns.isEmpty() ? List.of("*") : patterns);
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of("*"));
 		configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
