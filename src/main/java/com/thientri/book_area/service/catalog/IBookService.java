@@ -19,12 +19,10 @@ public interface IBookService {
 
 	Page<BookDetailResponse> getAllBooks(String search, String category, String format, Pageable pageable);
 
-	// THÊM: Bắt buộc truyền danh sách file ảnh đính kèm
 	void createBook(BookCreateRequest request, List<MultipartFile> imageFiles);
 
 	void toggleBookActiveStatus(Long bookId, boolean isActive);
 
-	// Sửa thông tin cơ bản của sách
 	void updateBook(Long bookId, BookUpdateRequest request);
 
 	Page<AdminBookListResponse> getAdminBooks(String search, String category, Boolean isActive, Pageable pageable);
@@ -41,7 +39,5 @@ public interface IBookService {
 
 	void updateBook(Long bookId, BookUpdateRequest request, MultipartFile coverFile, MultipartFile pdfFile);
 
-	// Quản lý ảnh của sách gốc
-	
-	
+	void deleteBook(Long bookId);
 }

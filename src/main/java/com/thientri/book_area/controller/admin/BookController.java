@@ -85,4 +85,10 @@ public class BookController {
 		return ResponseEntity.ok(ApiResponse.success("Đã thay đổi trạng thái kinh doanh của sách!", null));
 	}
 
+	@DeleteMapping("/{id}")
+	public ResponseEntity<ApiResponse<Void>> deleteBook(@PathVariable Long id) {
+		bookService.deleteBook(id);
+		return ResponseEntity.ok(ApiResponse.success("Xóa sách thành công!", null));
+	}
+
 }

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -76,5 +77,11 @@ public class AdminBookManagementController {
 	public ResponseEntity<ApiResponse<Void>> updateStatus(@PathVariable Long id, @RequestParam boolean isActive) {
 		bookService.toggleBookActiveStatus(id, isActive);
 		return ResponseEntity.ok(ApiResponse.success(isActive ? "Đã hiển thị sách." : "Đã ẩn sách.", null));
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<ApiResponse<Void>> deleteBook(@PathVariable Long id) {
+		bookService.deleteBook(id);
+		return ResponseEntity.ok(ApiResponse.success("Xóa sách thành công.", null));
 	}
 }

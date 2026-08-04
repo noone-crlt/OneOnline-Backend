@@ -431,6 +431,40 @@ public class BookServiceImpl implements IBookService {
             throw new IllegalStateException("Không thể lưu ảnh bìa.", exception);
         }
     }
+    @Override
+    @Transactional
+    public void deleteBook(Long bookId) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách với ID: " + bookId));
 
+        try {
+            List<String> oldImages = readStoredImageUrls(book.getImages());
+            for (String oldPath : oldImages) {
+                if (oldPath != null && !oldPath.isBlank()) {
+                    minioService.deleteFile(oldPath);
+                }
+            }
+            if (book.getEditions() != null) {
+                for (BookEdition edition : book.getEditions()) {
+                    if (edition.getFileObjectName() != null && !edition.getFileObjectName().isBlank()) {
+                        minioService.deleteFile(edition.getFileObjectName());
+                    }
+                    if (edition.getCoverObjectName() != null && !edition.getCoverObjectName().isBlank()) {
+                        minioService.deleteFile(edition.getCoverObjectName());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi dọn dẹp tệp MinIO khi xóa sách ID {}: {}", bookId, e.getMessage());
+        }
 
+        try {
+            bookRepository.delete(book);
+            log.info("Đã xóa thành công sách ID: {}", bookId);
+        } catch (DataIntegrityViolationException exception) {
+            book.setIsActive(false);
+            bookRepository.save(book);
+            throw new BadRequestException("Sách này đã có lịch sử đơn hàng/giao dịch trong hệ thống. Hệ thống đã tự động chuyển sách sang trạng thái Ẩn thay vì xóa hẳn.");
+        }
+    }
 }

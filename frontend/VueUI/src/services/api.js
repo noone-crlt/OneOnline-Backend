@@ -338,6 +338,13 @@ export function updateAdminBookStatus(bookId, isActive) {
   })
 }
 
+export function deleteAdminBook(bookId) {
+  return apiFetch(`/api/admin/books/${bookId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
 export function updateCurrentUserProfile(payload) {
   return apiFetch('/api/auth/me', {
     method: 'PATCH',

@@ -17,6 +17,7 @@ import {
 } from '@phosphor-icons/vue'
 import {
   createAdminBook,
+  deleteAdminBook,
   getAdminBook,
   getAdminBookFormOptions,
   getAdminBooks,
@@ -286,6 +287,21 @@ async function toggleBookStatus(book) {
   }
 }
 
+async function deleteBookItem(book) {
+  if (!window.confirm(`Bạn có chắc chắn muốn xóa cuốn sách "${book.title}" không?\nHành động này sẽ xóa dữ liệu sách khỏi hệ thống.`)) {
+    return
+  }
+
+  clearMessages()
+  try {
+    await deleteAdminBook(book.id)
+    successMessage.value = `Đã xóa cuốn sách "${book.title}" thành công.`
+    await loadBooks()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Không thể xóa sách.'
+  }
+}
+
 function changePage(nextPage) {
   if (nextPage < 0 || nextPage >= totalPages.value || nextPage === currentPage.value) return
   currentPage.value = nextPage
@@ -461,6 +477,13 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
               >
                 <PhEyeSlash v-if="book.isActive" :size="16" />
                 <PhEye v-else :size="16" />
+              </button>
+              <button
+                class="action-btn delete-btn"
+                @click="deleteBookItem(book)"
+                title="Xóa sách"
+              >
+                <PhTrash :size="16" />
               </button>
             </div>
           </div>
@@ -1092,6 +1115,11 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
 .show-btn:hover {
   background: #f0fdf4;
   color: #16a34a;
+}
+
+.delete-btn:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 .action-btn:active {
