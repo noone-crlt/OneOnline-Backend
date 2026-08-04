@@ -34,7 +34,7 @@ public class Author {
 	@Column(name = "name", length = 255, nullable = false)
 	private String name;
 
-	@Column(name = "bio", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "bio", length = 4000)
 	private String bio;
 
 	@Column(name = "avatar", length = 500)
