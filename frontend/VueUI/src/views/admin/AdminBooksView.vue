@@ -578,14 +578,15 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
                     <PhFileText :size="16" />
                     File PDF Ebook {{ editingBookId ? '(tùy chọn)' : '' }}
                   </span>
-                  <div class="upload-zone">
+                  <div class="upload-zone" :class="{ 'has-file': pdfFileName }">
                     <PhUploadSimple :size="24" class="upload-icon" />
-                    <span>Kéo thả hoặc nhấn để chọn file PDF</span>
+                    <span v-if="pdfFileName" class="existing-file-text">
+                      📄 <strong>File PDF hiện có:</strong> {{ pdfFileName }}
+                      <br /><small class="change-hint">(Nhấn hoặc kéo thả file mới để thay thế)</small>
+                    </span>
+                    <span v-else>Kéo thả hoặc nhấn để chọn file PDF</span>
                     <input type="file" accept="application/pdf" @change="handlePdfChange" />
                   </div>
-                  <small v-if="pdfFileName" class="file-selected">
-                    ✓ {{ pdfFileName }}
-                  </small>
                 </label>
 
                 <!-- Cover Upload -->
@@ -594,9 +595,13 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
                     <PhImage :size="16" />
                     Ảnh bìa {{ editingBookId ? '(tùy chọn)' : '' }}
                   </span>
-                  <div class="upload-zone">
+                  <div class="upload-zone" :class="{ 'has-file': coverPreview }">
                     <PhUploadSimple :size="24" class="upload-icon" />
-                    <span>JPG, PNG hoặc WebP – Nhấn để chọn</span>
+                    <span v-if="coverPreview" class="existing-file-text">
+                      🖼️ <strong>Ảnh bìa đã có trong hệ thống</strong>
+                      <br /><small class="change-hint">(Nhấn hoặc kéo thả ảnh mới để thay thế)</small>
+                    </span>
+                    <span v-else>JPG, PNG hoặc WebP – Nhấn để chọn</span>
                     <input type="file" accept="image/jpeg,image/png,image/webp" @change="handleCoverChange" />
                   </div>
                 </label>
@@ -1371,6 +1376,28 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
 .upload-zone:hover {
   border-color: #a1a1aa;
   background: #f4f4f5;
+}
+
+.upload-zone.has-file {
+  background: #ecfdf5;
+  border-color: #10b981;
+  border-style: solid;
+}
+
+.existing-file-text {
+  text-align: center;
+  color: #065f46;
+  font-size: 0.85rem;
+}
+
+.change-hint {
+  color: #059669;
+  font-weight: 400;
+  font-size: 0.78rem;
+}
+
+.upload-zone.has-file .upload-icon {
+  color: #10b981;
 }
 
 .upload-zone input[type="file"] {

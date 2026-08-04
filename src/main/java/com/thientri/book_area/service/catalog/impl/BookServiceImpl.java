@@ -265,7 +265,12 @@ public class BookServiceImpl implements IBookService {
 
         // Tìm hoặc tạo EBOOK_PDF edition
         BookEdition ebookEdition = book.getEditions().stream()
-                .filter(e -> "EBOOK_PDF".equals(e.getFormat()))
+                .filter(e -> e.getFormat() != null && (
+                        "EBOOK_PDF".equalsIgnoreCase(e.getFormat()) ||
+                        "EBOOK".equalsIgnoreCase(e.getFormat()) ||
+                        "EBOOK_EPUB".equalsIgnoreCase(e.getFormat()) ||
+                        (e.getFileObjectName() != null && !e.getFileObjectName().isBlank())
+                ))
                 .findFirst()
                 .orElse(null);
 
@@ -326,7 +331,12 @@ public class BookServiceImpl implements IBookService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách."));
 
         BookEdition ebookEdition = book.getEditions().stream()
-                .filter(e -> "EBOOK_PDF".equals(e.getFormat()))
+                .filter(e -> e.getFormat() != null && (
+                        "EBOOK_PDF".equalsIgnoreCase(e.getFormat()) ||
+                        "EBOOK".equalsIgnoreCase(e.getFormat()) ||
+                        "EBOOK_EPUB".equalsIgnoreCase(e.getFormat()) ||
+                        (e.getFileObjectName() != null && !e.getFileObjectName().isBlank())
+                ))
                 .findFirst()
                 .orElse(null);
 
