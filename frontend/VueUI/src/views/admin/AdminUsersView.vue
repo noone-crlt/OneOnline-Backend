@@ -1,91 +1,139 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import {
   PhMagnifyingGlass,
-  PhPlus,
-  PhPencilSimple,
-  PhTrash,
   PhLockKey,
   PhCheckCircle,
+  PhCaretLeft,
+  PhCaretRight,
+  PhUser,
 } from '@phosphor-icons/vue'
+import { getAdminUsers, toggleBanAdminUser } from '../../services/api'
+import notify, { confirmDialog } from '../../services/toast'
 
-// Mock Data for Users
-const users = ref([
-  {
-    id: 1,
-    fullName: 'Nguyễn Văn A',
-    email: 'nguyenvana@example.com',
-    role: 'Quản trị viên',
-    status: 'Hoạt động',
-    joinedAt: '12/05/2026'
-  },
-  {
-    id: 2,
-    fullName: 'Trần Thị B',
-    email: 'tranthib@example.com',
-    role: 'Người dùng',
-    status: 'Hoạt động',
-    joinedAt: '15/06/2026'
-  },
-  {
-    id: 3,
-    fullName: 'Lê Hoàng C',
-    email: 'lehoangc@example.com',
-    role: 'Người dùng',
-    status: 'Bị khóa',
-    joinedAt: '01/07/2026'
-  }
-])
-
+const users = ref([])
+const totalUsers = ref(0)
+const currentPage = ref(0)
+const totalPages = ref(1)
 const searchQuery = ref('')
+const selectedRole = ref('')
+const selectedStatus = ref('')
+const isLoading = ref(false)
 
-function handleAddUser() {
-  alert('Chức năng "Thêm người dùng mới" (UI)')
+let searchTimer = null
+
+async function loadUsers() {
+  isLoading.value = true
+  try {
+    const res = await getAdminUsers({
+      search: searchQuery.value,
+      role: selectedRole.value,
+      status: selectedStatus.value,
+      page: currentPage.value,
+      size: 10,
+    })
+    users.value = res.content || []
+    totalPages.value = res.totalPages || 1
+    totalUsers.value = res.totalElements || 0
+  } catch (error) {
+    notify.error(error instanceof Error ? error.message : 'Không thể tải danh sách người dùng.')
+  } finally {
+    isLoading.value = false
+  }
 }
 
-function handleEditUser(id) {
-  alert(`Chức năng "Sửa thông tin người dùng" (ID: ${id})`)
+async function handleToggleBan(user) {
+  const isBanned = user.status === 'BANNED'
+  const nextAction = isBanned ? 'gỡ khóa' : 'khóa'
+  const confirmMsg = isBanned
+    ? `Bạn có chắc chắn muốn gỡ khóa tài khoản cho "${user.fullName || user.email}" không?`
+    : `Bạn có chắc chắn muốn khóa tài khoản "${user.fullName || user.email}" không?\nTài khoản bị khóa sẽ không thể đăng nhập vào hệ thống.`
+
+  const confirmed = await confirmDialog(
+    `Xác nhận ${nextAction} tài khoản`,
+    confirmMsg,
+    isBanned ? 'Gỡ khóa' : 'Khóa tài khoản',
+    'Hủy'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await toggleBanAdminUser(user.id, !isBanned)
+    notify.success(isBanned ? 'Đã gỡ khóa tài khoản thành công.' : 'Đã khóa tài khoản người dùng thành công.')
+    await loadUsers()
+  } catch (error) {
+    notify.error(error instanceof Error ? error.message : 'Không thể thay đổi trạng thái tài khoản.')
+  }
 }
 
-function handleLockUser(id) {
-  alert(`Chức năng "Khóa/Mở khóa tài khoản" (ID: ${id})`)
+function changePage(page) {
+  if (page < 0 || page >= totalPages.value || page === currentPage.value) return
+  currentPage.value = page
+  loadUsers()
 }
 
-function handleDeleteUser(id) {
-  alert(`Chức năng "Xóa người dùng" (ID: ${id})`)
+function formatRole(roles) {
+  if (!roles || roles.length === 0) return 'Người dùng'
+  const hasAdmin = roles.some((r) => String(r).toUpperCase().includes('ADMIN'))
+  return hasAdmin ? 'Quản trị viên' : 'Người dùng'
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'Chưa cập nhật'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  return date.toLocaleDateString('vi-VN')
+}
+
+watch([selectedRole, selectedStatus], () => {
+  currentPage.value = 0
+  loadUsers()
+})
+
+watch(searchQuery, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    currentPage.value = 0
+    loadUsers()
+  }, 350)
+})
+
+onMounted(() => {
+  loadUsers()
+})
 </script>
 
 <template>
   <div class="admin-page">
-    <!-- Header -->
+    <!-- Header (Chỉ còn tiêu đề, không có nút thêm) -->
     <header class="page-header bento-item">
       <div>
         <h2>Quản lý Người dùng</h2>
-        <p>Quản lý tài khoản, phân quyền và trạng thái người dùng.</p>
+        <p>Quản lý danh sách tài khoản và quyền khóa/mở khóa đăng nhập.</p>
       </div>
-      <button class="primary-btn" @click="handleAddUser">
-        <PhPlus :size="20" weight="bold" />
-        Thêm người dùng
-      </button>
     </header>
 
     <!-- Toolbar -->
     <div class="toolbar bento-item">
       <div class="search-box">
         <PhMagnifyingGlass :size="20" class="search-icon" />
-        <input type="text" v-model="searchQuery" placeholder="Tìm kiếm theo tên, email..." />
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="Tìm kiếm theo tên, email, sđt..."
+        />
       </div>
       <div class="filter-actions">
-        <select class="bento-select">
+        <select v-model="selectedRole" class="bento-select">
           <option value="">Tất cả vai trò</option>
-          <option value="admin">Quản trị viên</option>
-          <option value="user">Người dùng</option>
+          <option value="ADMIN">Quản trị viên</option>
+          <option value="USER">Người dùng</option>
         </select>
-        <select class="bento-select">
+        <select v-model="selectedStatus" class="bento-select">
           <option value="">Trạng thái</option>
-          <option value="active">Hoạt động</option>
-          <option value="locked">Bị khóa</option>
+          <option value="ACTIVE">Hoạt động</option>
+          <option value="BANNED">Bị khóa</option>
         </select>
       </div>
     </div>
@@ -97,59 +145,82 @@ function handleDeleteUser(id) {
           <tr>
             <th>Người dùng</th>
             <th>Email</th>
+            <th>SĐT</th>
             <th>Vai trò</th>
             <th>Ngày tham gia</th>
             <th>Trạng thái</th>
-            <th class="actions-col">Thao tác</th>
+            <th class="actions-col">Thao tác (Khóa / Gỡ khóa)</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.id">
             <td>
               <div class="user-profile">
-                <div class="avatar">{{ user.fullName.charAt(0) }}</div>
-                <strong>{{ user.fullName }}</strong>
+                <div class="avatar">{{ (user.fullName || user.email || 'U').charAt(0).toUpperCase() }}</div>
+                <strong>{{ user.fullName || 'Chưa đặt tên' }}</strong>
               </div>
             </td>
             <td>{{ user.email }}</td>
+            <td>{{ user.phone || '-' }}</td>
             <td>
-              <span class="role-badge" :class="{ 'admin-role': user.role === 'Quản trị viên' }">
-                {{ user.role }}
+              <span class="role-badge" :class="{ 'admin-role': formatRole(user.roles) === 'Quản trị viên' }">
+                {{ formatRole(user.roles) }}
               </span>
             </td>
-            <td>{{ user.joinedAt }}</td>
+            <td>{{ formatDate(user.createdAt) }}</td>
             <td>
-              <span class="status-badge" :class="user.status === 'Hoạt động' ? 'success' : 'danger'">
-                {{ user.status }}
+              <span class="status-badge" :class="user.status === 'BANNED' ? 'danger' : 'success'">
+                {{ user.status === 'BANNED' ? 'Bị khóa' : 'Hoạt động' }}
               </span>
             </td>
             <td class="actions-col">
               <div class="action-buttons">
-                <button class="icon-btn edit" @click="handleEditUser(user.id)" title="Chỉnh sửa">
-                  <PhPencilSimple :size="18" />
-                </button>
-                <button 
-                  class="icon-btn" 
-                  :class="user.status === 'Hoạt động' ? 'warning' : 'success'" 
-                  @click="handleLockUser(user.id)" 
-                  :title="user.status === 'Hoạt động' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'"
+                <!-- Nút duy nhất: Khóa / Gỡ khóa tài khoản -->
+                <button
+                  class="icon-btn"
+                  :class="user.status === 'BANNED' ? 'success-btn' : 'ban-btn'"
+                  @click="handleToggleBan(user)"
+                  :title="user.status === 'BANNED' ? 'Gỡ khóa tài khoản' : 'Khóa tài khoản'"
                 >
-                  <PhLockKey v-if="user.status === 'Hoạt động'" :size="18" />
-                  <PhCheckCircle v-else :size="18" />
-                </button>
-                <button class="icon-btn danger" @click="handleDeleteUser(user.id)" title="Xóa">
-                  <PhTrash :size="18" />
+                  <PhCheckCircle v-if="user.status === 'BANNED'" :size="18" />
+                  <PhLockKey v-else :size="18" />
                 </button>
               </div>
             </td>
           </tr>
-          <tr v-if="users.length === 0">
-            <td colspan="6" class="empty-state">
-              <p>Chưa có người dùng nào.</p>
+          <tr v-if="!isLoading && users.length === 0">
+            <td colspan="7" class="empty-state">
+              <PhUser :size="40" class="empty-icon" />
+              <p>Không tìm thấy người dùng phù hợp.</p>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="users.length > 0" class="pagination">
+      <span class="page-info">
+        Trang <strong>{{ currentPage + 1 }}</strong> / {{ totalPages }} (Tổng {{ totalUsers }} người dùng)
+      </span>
+      <div class="page-buttons">
+        <button class="page-btn" :disabled="currentPage === 0 || isLoading" @click="changePage(currentPage - 1)">
+          <PhCaretLeft :size="16" />
+        </button>
+        <button
+          v-for="p in totalPages"
+          :key="p"
+          class="page-btn"
+          :class="{ 'page-btn--active': p - 1 === currentPage }"
+          :disabled="isLoading"
+          @click="changePage(p - 1)"
+        >
+          {{ p }}
+        </button>
+        <button class="page-btn" :disabled="currentPage + 1 >= totalPages || isLoading" @click="changePage(currentPage + 1)">
+          <PhCaretRight :size="16" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -158,7 +229,7 @@ function handleDeleteUser(id) {
 .admin-page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   padding: 0.5rem;
 }
 
@@ -170,41 +241,17 @@ function handleDeleteUser(id) {
 }
 
 .page-header h2 {
-  font-size: 2rem;
+  font-size: 1.85rem;
   font-weight: 800;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   margin: 0 0 0.25rem 0;
+  color: var(--text-main);
 }
 
 .page-header p {
   color: var(--text-muted);
   margin: 0;
-  font-size: 1.05rem;
-}
-
-.primary-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--text-main);
-  color: var(--bento-surface);
-  border: none;
-  padding: 0.85rem 1.5rem;
-  border-radius: 99px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
-}
-
-.primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 35px -5px rgba(0,0,0,0.2);
-}
-
-.primary-btn:active {
-  transform: scale(0.96);
+  font-size: 0.95rem;
 }
 
 /* Toolbar */
@@ -214,14 +261,14 @@ function handleDeleteUser(id) {
   align-items: center;
   background: var(--bento-surface);
   padding: 1rem;
-  border-radius: 1.5rem;
+  border-radius: 1.25rem;
   border: 1px solid var(--bento-border);
-  box-shadow: 0 10px 30px -15px rgba(0,0,0,0.03);
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.03);
 }
 
 .search-box {
   position: relative;
-  width: 350px;
+  width: 320px;
 }
 
 .search-icon {
@@ -234,19 +281,19 @@ function handleDeleteUser(id) {
 
 .search-box input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  padding: 0.65rem 1rem 0.65rem 2.5rem;
   border: 1px solid var(--bento-border);
   border-radius: 99px;
   background: var(--bento-bg);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
 
 .search-box input:focus {
   border-color: #a1a1aa;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 .filter-actions {
@@ -255,11 +302,12 @@ function handleDeleteUser(id) {
 }
 
 .bento-select {
-  padding: 0.75rem 1.25rem;
+  padding: 0.65rem 1.15rem;
   border: 1px solid var(--bento-border);
   border-radius: 99px;
   background: var(--bento-bg);
   font-family: inherit;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -273,9 +321,9 @@ function handleDeleteUser(id) {
 /* Table */
 .table-container {
   background: var(--bento-surface);
-  border-radius: 1.5rem;
+  border-radius: 1.25rem;
   border: 1px solid var(--bento-border);
-  box-shadow: 0 10px 30px -15px rgba(0,0,0,0.03);
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.03);
   overflow: hidden;
 }
 
@@ -286,20 +334,21 @@ function handleDeleteUser(id) {
 
 .bento-table th {
   background: #fafafa;
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.25rem;
   text-align: left;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   border-bottom: 1px solid var(--bento-border);
 }
 
 .bento-table td {
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.25rem;
   border-bottom: 1px solid var(--bento-border);
   vertical-align: middle;
+  font-size: 0.9rem;
 }
 
 .bento-table tr:last-child td {
@@ -317,24 +366,24 @@ function handleDeleteUser(id) {
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--text-main);
+  background: var(--text-main, #09090b);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .role-badge {
   background: #f4f4f5;
   color: var(--text-muted);
-  padding: 0.25rem 0.75rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 99px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
@@ -344,9 +393,9 @@ function handleDeleteUser(id) {
 }
 
 .status-badge {
-  padding: 0.35rem 0.85rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 99px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -362,7 +411,7 @@ function handleDeleteUser(id) {
 
 .actions-col {
   text-align: right;
-  width: 150px;
+  width: 140px;
 }
 
 .action-buttons {
@@ -372,11 +421,11 @@ function handleDeleteUser(id) {
 }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--bento-border);
+  background: var(--bento-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -385,34 +434,75 @@ function handleDeleteUser(id) {
   color: var(--text-muted);
 }
 
-.icon-btn:hover {
-  background: #f4f4f5;
-  color: var(--text-main);
-}
-
-.icon-btn.edit:hover {
-  color: #3b82f6;
-  background: #eff6ff;
-}
-
-.icon-btn.warning:hover {
-  color: #d97706;
+.ban-btn:hover {
   background: #fffbeb;
+  color: #d97706;
+  border-color: #fcd34d;
 }
 
-.icon-btn.success:hover {
-  color: #059669;
+.success-btn:hover {
   background: #ecfdf5;
-}
-
-.icon-btn.danger:hover {
-  color: #ef4444;
-  background: #fef2f2;
+  color: #059669;
+  border-color: #6ee7b7;
 }
 
 .empty-state {
   text-align: center;
   padding: 3rem;
   color: var(--text-muted);
+}
+
+.empty-icon {
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.page-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.page-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.page-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--bento-border);
+  background: var(--bento-surface);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #f4f4f5;
+}
+
+.page-btn--active {
+  background: var(--text-main, #09090b) !important;
+  color: white !important;
+  border-color: var(--text-main, #09090b) !important;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 </style>

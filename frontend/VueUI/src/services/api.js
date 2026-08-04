@@ -345,6 +345,20 @@ export function deleteAdminBook(bookId) {
   })
 }
 
+export function getAdminUsers(params = {}) {
+  const query = buildQueryString(params)
+  return apiFetch(`/api/admin/users${query}`, {
+    headers: authHeaders(),
+  })
+}
+
+export function toggleBanAdminUser(userId, isBanned) {
+  return apiFetch(`/api/admin/users/${userId}/ban?isBanned=${isBanned}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
+}
+
 export function updateCurrentUserProfile(payload) {
   return apiFetch('/api/auth/me', {
     method: 'PATCH',
