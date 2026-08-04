@@ -96,7 +96,15 @@ async function loadAddresses() {
   }
 }
 
+const phoneRegex = /^(0[35789]\d{8}|02\d{9})$/
+
 async function handleSaveAddress() {
+  const p = addressForm.value.recipientPhone ? addressForm.value.recipientPhone.trim() : ''
+  if (p && !phoneRegex.test(p)) {
+    toast.error('Số điện thoại không hợp lệ. Vui lòng nhập số di động 10 chữ số (03, 05, 07, 08, 09) hoặc số cố định 11 chữ số (đầu số 02).')
+    return
+  }
+
   isAddressSaving.value = true
   try {
     if (editingAddressId.value) {
@@ -145,11 +153,17 @@ function formatCurrency(val) {
 }
 
 async function handleSaveProfile() {
+  const p = phone.value ? phone.value.trim() : ''
+  if (p && !phoneRegex.test(p)) {
+    toast.error('Số điện thoại không hợp lệ. Vui lòng nhập số di động 10 chữ số (03, 05, 07, 08, 09) hoặc số cố định 11 chữ số (đầu số 02).')
+    return
+  }
+
   isSaving.value = true
   try {
     const updatedUser = await updateCurrentUserProfile({
       fullName: fullName.value.trim(),
-      phone: phone.value.trim(),
+      phone: p,
     })
     updateAuthUser(updatedUser)
     fullName.value = updatedUser.fullName || ''
