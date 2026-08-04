@@ -158,8 +158,14 @@ export async function apiFetch(path, init = {}) {
         ? String(payload.message)
         : response.statusText || 'Request failed'
 
-    if ((response.status === 403 || response.status === 401) && message.toLowerCase().includes('khóa')) {
+    if (
+      (response.status === 403 || response.status === 401) &&
+      (message.toLowerCase().includes('khóa') || message.toLowerCase().includes('banned'))
+    ) {
       clearStoredSession()
+      if (typeof window !== 'undefined' && !window.location.hash.includes('/login')) {
+        window.location.href = '#/login'
+      }
     }
 
     throw new ApiError(message, response.status, payload)
@@ -169,6 +175,10 @@ export async function apiFetch(path, init = {}) {
   }
 
   return payload
+}
+
+export function getCurrentUserProfile() {
+  return apiFetch('/api/auth/me', { headers: authHeaders() })
 }
 
 function normalizeAuthResponse(payload) {

@@ -14,6 +14,7 @@ import com.thientri.book_area.exception.ResourceNotFoundException;
 import com.thientri.book_area.model.user.Role;
 import com.thientri.book_area.model.user.User;
 import com.thientri.book_area.model.user.UserStatus;
+import com.thientri.book_area.repository.user.RefreshTokenRepository;
 import com.thientri.book_area.repository.user.UserRepository;
 import com.thientri.book_area.service.admin.IAdminUserService;
 
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminUserServiceImpl implements IAdminUserService {
 
 	private final UserRepository userRepository;
+	private final RefreshTokenRepository refreshTokenRepository;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -60,6 +62,7 @@ public class AdminUserServiceImpl implements IAdminUserService {
 			user.setStatus(UserStatus.BANNED);
 			user.setBanReason(reason != null && !reason.isBlank() ? reason.trim() : "Vi phạm quy định của hệ thống.");
 			user.setBannedAt(LocalDateTime.now());
+			refreshTokenRepository.deleteByUser(user);
 		} else {
 			user.setStatus(UserStatus.ACTIVE);
 			user.setBanReason(null);
