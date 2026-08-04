@@ -36,54 +36,12 @@ function resolveCover(url) {
 const summaryCards = computed(() => {
   const current = summary.value
   return [
-    {
-      label: 'Người dùng',
-      subtitle: 'Tài khoản người dùng',
-      value: compactNumber.format(current?.totalUsers ?? 0),
-      icon: PhUsers,
-      color: '#10b981',
-      badge: 'Thành viên'
-    },
-    {
-      label: 'Tác phẩm',
-      subtitle: 'Sách trong kho',
-      value: compactNumber.format(current?.totalBooks ?? 0),
-      icon: PhBooks,
-      color: '#6366f1',
-      badge: 'Kho sách'
-    },
-    {
-      label: 'Chương audio',
-      subtitle: 'Audiobook đã tải',
-      value: compactNumber.format(current?.totalChapters ?? 0),
-      icon: PhBookOpenText,
-      color: '#f59e0b',
-      badge: 'Nội dung'
-    },
-    {
-      label: 'Danh mục',
-      subtitle: 'Phân loại thể loại',
-      value: compactNumber.format(current?.totalCategories ?? 0),
-      icon: PhBookmarkSimple,
-      color: '#ec4899',
-      badge: 'Thể loại'
-    },
-    {
-      label: 'Tác giả',
-      subtitle: 'Tác giả & dịch giả',
-      value: compactNumber.format(current?.totalAuthors ?? 0),
-      icon: PhPenNib,
-      color: '#0ea5e9',
-      badge: 'Tác giả'
-    },
-    {
-      label: 'Bình luận',
-      subtitle: 'Đánh giá người dùng',
-      value: compactNumber.format(current?.totalComments ?? 0),
-      icon: PhChatCircleDots,
-      color: '#8b5cf6',
-      badge: 'Đánh giá'
-    },
+    { label: 'Tổng người dùng', value: compactNumber.format(current?.totalUsers ?? 0), icon: PhUsers, color: '#10b981' },
+    { label: 'Tổng tác phẩm', value: compactNumber.format(current?.totalBooks ?? 0), icon: PhBooks, color: '#6366f1' },
+    { label: 'Chương audio', value: compactNumber.format(current?.totalChapters ?? 0), icon: PhBookOpenText, color: '#f59e0b' },
+    { label: 'Danh mục sách', value: compactNumber.format(current?.totalCategories ?? 0), icon: PhBookmarkSimple, color: '#ec4899' },
+    { label: 'Tổng tác giả', value: compactNumber.format(current?.totalAuthors ?? 0), icon: PhPenNib, color: '#0ea5e9' },
+    { label: 'Tổng bình luận', value: compactNumber.format(current?.totalComments ?? 0), icon: PhChatCircleDots, color: '#8b5cf6' },
   ]
 })
 
@@ -234,30 +192,19 @@ onMounted(loadDashboard)
         </div>
       </div>
 
-      <!-- Metric Cards - Bento 2.0 Grid -->
-      <div class="metrics-bento-grid">
+      <!-- Compact & Clear Metric Cards Grid -->
+      <div class="compact-metrics-grid">
         <div 
           v-for="card in summaryCards" 
           :key="card.label" 
-          class="metric-card bento-item"
+          class="compact-metric-card bento-item"
         >
-          <div class="metric-card-inner">
-            <div class="metric-card-top">
-              <div class="metric-icon-box" :style="{ color: card.color, backgroundColor: `${card.color}15`, borderColor: `${card.color}30` }">
-                <component :is="card.icon" :size="24" weight="duotone" />
-              </div>
-              <span class="metric-badge" :style="{ color: card.color, backgroundColor: `${card.color}12` }">
-                {{ card.badge }}
-              </span>
-            </div>
-
-            <div class="metric-card-bottom">
-              <div class="metric-value-num">{{ card.value }}</div>
-              <div class="metric-info">
-                <h4 class="metric-title">{{ card.label }}</h4>
-                <p class="metric-subtitle">{{ card.subtitle }}</p>
-              </div>
-            </div>
+          <div class="compact-icon-box" :style="{ color: card.color, backgroundColor: `${card.color}15` }">
+            <component :is="card.icon" :size="20" weight="duotone" />
+          </div>
+          <div class="compact-metric-details">
+            <span class="compact-metric-label">{{ card.label }}</span>
+            <span class="compact-metric-value">{{ card.value }}</span>
           </div>
         </div>
       </div>
@@ -534,114 +481,83 @@ onMounted(loadDashboard)
   width: 100%;
 }
 
-/* Metrics Bento Grid (3-column layout adhering to design-taste-frontend-v1) */
-.metrics-bento-grid {
+/* Compact & Clear Metric Cards Grid */
+.compact-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
   width: 100%;
 }
 
-@media (max-width: 1024px) {
-  .metrics-bento-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 1200px) {
+  .compact-metrics-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 640px) {
-  .metrics-bento-grid {
-    grid-template-columns: 1fr;
+  .compact-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-.metric-card {
+.compact-metric-card {
   display: flex;
-  flex-direction: column;
-}
-
-.metric-card-inner {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 1.35rem 1.5rem;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.1rem;
   background: #ffffff;
-  border-radius: 1.25rem;
+  border-radius: 0.95rem;
   border: 1px solid rgba(24, 24, 27, 0.08);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
-  height: 100%;
-  min-height: 150px;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.03);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
 }
 
-.metric-card-inner:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.08);
+.compact-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.07);
   border-color: rgba(99, 102, 241, 0.25);
 }
 
-.metric-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-
-.metric-icon-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 0.85rem;
+.compact-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 0.65rem;
   display: grid;
   place-items: center;
-  border: 1px solid transparent;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
 }
 
-.metric-card-inner:hover .metric-icon-box {
-  transform: scale(1.1) rotate(3deg);
+.compact-metric-card:hover .compact-icon-box {
+  transform: scale(1.08);
 }
 
-.metric-badge {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.25rem 0.65rem;
-  border-radius: 99px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.metric-card-bottom {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.metric-value-num {
-  font-size: 2.15rem;
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  color: #0f172a;
-  font-family: 'JetBrains Mono', 'Geist Mono', Satoshi, monospace;
-}
-
-.metric-info {
+.compact-metric-details {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  overflow: hidden;
 }
 
-.metric-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.metric-subtitle {
+.compact-metric-label {
   font-size: 0.78rem;
+  font-weight: 700;
   color: #64748b;
-  margin: 0;
-  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.compact-metric-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #0f172a;
+  font-family: 'JetBrains Mono', 'Geist Mono', Satoshi, monospace;
+  letter-spacing: -0.02em;
 }
 
 /* Skeleton Loading */
