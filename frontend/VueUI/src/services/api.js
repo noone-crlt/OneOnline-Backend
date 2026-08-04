@@ -297,7 +297,9 @@ export function deleteAdminCategory(categoryId) {
 }
 
 export function getAuthors() {
-  return apiFetch('/api/authors')
+  return apiFetch('/api/authors', {
+    headers: authHeaders(),
+  })
 }
 
 export function createAdminAuthor(data) {

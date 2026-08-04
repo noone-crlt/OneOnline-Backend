@@ -74,13 +74,13 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/google", "/api/auth/register", "/api/auth/refresh")
 						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**", "/api/categories",
-								"/api/categories/**", "/api/public/**", "/api/files/download")
+								"/api/categories/**", "/api/authors", "/api/authors/**", "/api/public/**", "/api/files/download")
 						.permitAll().requestMatchers(HttpMethod.POST, "/api/payments/sepay-webhook").permitAll()
 						.requestMatchers("/api/admin/**").hasAuthority("ADMIN").requestMatchers("/api/editions/**")
 						.hasAuthority("ADMIN")
 						.requestMatchers("/api/cart/**", "/api/orders/**", "/api/reading/**", "/api/library/**")
 						.authenticated().requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ADMIN")
-						.requestMatchers(HttpMethod.GET, "/api/audiobooks", "/api/audio-chapters", "/api/authors",
+						.requestMatchers(HttpMethod.GET, "/api/audiobooks", "/api/audio-chapters",
 								"/api/book-images", "/api/inventory-logs", "/api/users")
 						.hasAuthority("ADMIN")
 						.requestMatchers(HttpMethod.POST, "/api/books", "/api/audiobooks", "/api/audio-chapters",
