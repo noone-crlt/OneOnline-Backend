@@ -14,7 +14,7 @@ import {
   updateAdminCategory,
   deleteAdminCategory
 } from '../../services/api'
-import notify from '../../services/toast'
+import notify, { confirmDialog } from '../../services/toast'
 
 const categories = ref([])
 const isLoading = ref(false)
@@ -100,7 +100,8 @@ async function saveCategory() {
 }
 
 async function handleDeleteCategory(id) {
-  if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return
+  const confirmed = await confirmDialog('Xác nhận xóa danh mục', 'Bạn có chắc chắn muốn xóa danh mục này không?', 'Xóa danh mục', 'Hủy')
+  if (!confirmed) return
 
   try {
     await deleteAdminCategory(id)

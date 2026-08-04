@@ -25,7 +25,7 @@ import {
   updateAdminBook,
   updateAdminBookStatus,
 } from '../../services/api'
-import notify from '../../services/toast'
+import notify, { confirmDialog } from '../../services/toast'
 
 const books = ref([])
 const totalBooks = ref(0)
@@ -282,7 +282,8 @@ async function saveBook() {
 async function toggleBookStatus(book) {
   const nextStatus = !book.isActive
   const action = nextStatus ? 'hiển thị lại' : 'ẩn'
-  if (!window.confirm(`Bạn có chắc chắn muốn ${action} sách “${book.title}” không?`)) return
+  const confirmed = await confirmDialog('Xác nhận trạng thái', `Bạn có chắc chắn muốn ${action} sách "${book.title}" không?`, 'Đồng ý', 'Hủy')
+  if (!confirmed) return
 
   clearMessages()
   try {
@@ -299,9 +300,8 @@ async function toggleBookStatus(book) {
 }
 
 async function deleteBookItem(book) {
-  if (!window.confirm(`Bạn có chắc chắn muốn xóa cuốn sách "${book.title}" không?\nHành động này sẽ xóa dữ liệu sách khỏi hệ thống.`)) {
-    return
-  }
+  const confirmed = await confirmDialog('Xác nhận xóa sách', `Bạn có chắc chắn muốn xóa cuốn sách "${book.title}" không?\nHành động này sẽ xóa dữ liệu sách khỏi hệ thống.`, 'Xóa sách', 'Hủy')
+  if (!confirmed) return
 
   clearMessages()
   try {
