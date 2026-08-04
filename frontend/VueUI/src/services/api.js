@@ -346,8 +346,16 @@ export function deleteAdminBook(bookId) {
 }
 
 export function getAdminUsers(params = {}) {
-  const query = buildQueryString(params)
-  return apiFetch(`/api/admin/users${query}`, {
+  const query = new URLSearchParams({
+    page: String(params.page ?? 0),
+    size: String(params.size ?? 10),
+  })
+
+  if (params.search?.trim()) query.set('search', params.search.trim())
+  if (params.role?.trim()) query.set('role', params.role.trim())
+  if (params.status?.trim()) query.set('status', params.status.trim())
+
+  return apiFetch(`/api/admin/users?${query.toString()}`, {
     headers: authHeaders(),
   })
 }
