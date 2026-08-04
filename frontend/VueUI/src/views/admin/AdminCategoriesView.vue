@@ -6,6 +6,8 @@ import {
   PhPencilSimple,
   PhTrash,
   PhBookmarkSimple,
+  PhBooks,
+  PhTrophy,
   PhX,
 } from '@phosphor-icons/vue'
 import {
@@ -30,6 +32,17 @@ const filteredCategories = computed(() => {
   if (!searchQuery.value.trim()) return categories.value
   const query = searchQuery.value.toLowerCase().trim()
   return categories.value.filter(c => c.name?.toLowerCase().includes(query))
+})
+
+const totalCategoriesCount = computed(() => categories.value.length)
+
+const totalCategorizedBooks = computed(() => {
+  return categories.value.reduce((acc, cat) => acc + (Number(cat.bookCount) || 0), 0)
+})
+
+const topCategory = computed(() => {
+  if (categories.value.length === 0) return null
+  return [...categories.value].sort((a, b) => (Number(b.bookCount) || 0) - (Number(a.bookCount) || 0))[0]
 })
 
 const modalTitle = computed(() => editingCategoryId.value ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới')
@@ -132,6 +145,39 @@ onMounted(() => {
       </button>
     </header>
 
+    <!-- Category KPI Summary Bar -->
+    <div class="category-kpi-bar bento-item">
+      <div class="category-kpi-card">
+        <div class="kpi-icon-pill" style="color: #ec4899; background-color: rgba(236, 72, 153, 0.12);">
+          <PhBookmarkSimple :size="20" weight="duotone" />
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-title">TỔNG DANH MỤC</span>
+          <span class="kpi-value">{{ totalCategoriesCount }}</span>
+        </div>
+      </div>
+
+      <div class="category-kpi-card">
+        <div class="kpi-icon-pill" style="color: #6366f1; background-color: rgba(99, 102, 241, 0.12);">
+          <PhBooks :size="20" weight="duotone" />
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-title">SÁCH ĐÃ PHÂN LOẠI</span>
+          <span class="kpi-value">{{ totalCategorizedBooks }} tác phẩm</span>
+        </div>
+      </div>
+
+      <div class="category-kpi-card">
+        <div class="kpi-icon-pill" style="color: #f59e0b; background-color: rgba(245, 158, 11, 0.12);">
+          <PhTrophy :size="20" weight="duotone" />
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-title">DANH MỤC NHIỀU SÁCH NHẤT</span>
+          <span class="kpi-value">{{ topCategory ? `${topCategory.name} (${topCategory.bookCount || 0})` : 'Chưa có' }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Toolbar -->
     <div class="toolbar bento-item">
       <div class="search-box">
@@ -231,6 +277,71 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* Category KPI Summary Bar */
+.category-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .category-kpi-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.category-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1.15rem;
+  background: #ffffff;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(24, 24, 27, 0.08);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.03);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.category-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.07);
+}
+
+.kpi-icon-pill {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.65rem;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.kpi-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+}
+
+.kpi-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kpi-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'JetBrains Mono', 'Geist Mono', Satoshi, monospace;
 }
 
 .page-header h2 {

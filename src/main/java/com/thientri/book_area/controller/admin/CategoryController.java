@@ -24,8 +24,8 @@ public class CategoryController {
 	private final CategoryRepository categoryRepository;
 
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<Category>>> getAllCategories() {
-		return ResponseEntity.ok(ApiResponse.success(categoryRepository.findAll()));
+	public ResponseEntity<ApiResponse<List<com.thientri.book_area.dto.response.catalog.CategoryResponse>>> getAllCategories() {
+		return ResponseEntity.ok(ApiResponse.success(categoryRepository.findAllWithBookCount()));
 	}
 
 	@GetMapping("/featured")

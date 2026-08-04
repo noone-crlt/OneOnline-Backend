@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import com.thientri.book_area.dto.response.catalog.CategoryResponse;
 import com.thientri.book_area.dto.response.catalog.FeaturedCategoryResponse;
 import com.thientri.book_area.model.catalog.Category;
 
@@ -15,6 +16,17 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 	// Đảm bảo không tạo trùng tên danh mục
 	Optional<Category> findByName(String name);
 	boolean existsByName(String name);
+
+	@Query("""
+			SELECT new com.thientri.book_area.dto.response.catalog.CategoryResponse(
+				c.id, c.name, COUNT(b)
+			)
+			FROM Category c
+			LEFT JOIN Book b ON c MEMBER OF b.categories
+			GROUP BY c.id, c.name
+			ORDER BY c.id ASC
+			""")
+	List<CategoryResponse> findAllWithBookCount();
 
 	@Query("""
 			SELECT new com.thientri.book_area.dto.response.catalog.FeaturedCategoryResponse(
