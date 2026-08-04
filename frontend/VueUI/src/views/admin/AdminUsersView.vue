@@ -180,7 +180,7 @@ onMounted(() => {
             <td>
               <div class="user-profile">
                 <div class="avatar">{{ (user.fullName || user.email || 'U').charAt(0).toUpperCase() }}</div>
-                <strong>{{ user.fullName || 'Chưa đặt tên' }}</strong>
+                <strong class="user-name">{{ user.fullName || 'Chưa đặt tên' }}</strong>
               </div>
             </td>
             <td>{{ user.email }}</td>
@@ -394,6 +394,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  white-space: nowrap;
+}
+
+.user-name {
+  white-space: nowrap;
+  font-weight: 700;
 }
 
 .avatar {
@@ -407,12 +413,15 @@ onMounted(() => {
   justify-content: center;
   font-weight: 700;
   font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .role-badge {
+  display: inline-block;
+  white-space: nowrap;
   background: #f4f4f5;
   color: var(--text-muted);
-  padding: 0.2rem 0.65rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 99px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -424,6 +433,8 @@ onMounted(() => {
 }
 
 .status-badge {
+  display: inline-block;
+  white-space: nowrap;
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
   font-size: 0.78rem;
