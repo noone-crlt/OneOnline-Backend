@@ -25,6 +25,7 @@ import {
   updateAdminBook,
   updateAdminBookStatus,
 } from '../../services/api'
+import notify from '../../services/toast'
 
 const books = ref([])
 const totalBooks = ref(0)
@@ -257,16 +258,22 @@ async function saveBook() {
     const payload = buildPayload()
     if (editingBookId.value) {
       await updateAdminBook(editingBookId.value, payload, coverFile.value, pdfFile.value)
-      successMessage.value = 'Cập nhật sách thành công.'
+      const msg = 'Cập nhật sách thành công.'
+      successMessage.value = msg
+      notify.success(msg)
     } else {
       await createAdminBook(payload, coverFile.value, pdfFile.value)
-      successMessage.value = 'Tạo sách thành công.'
+      const msg = 'Tạo sách thành công.'
+      successMessage.value = msg
+      notify.success(msg)
     }
     isModalOpen.value = false
     resetForm()
     await loadBooks()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Không thể lưu sách.'
+    const msg = error instanceof Error ? error.message : 'Không thể lưu sách.'
+    errorMessage.value = msg
+    notify.error(msg)
   } finally {
     isSaving.value = false
   }
@@ -280,10 +287,14 @@ async function toggleBookStatus(book) {
   clearMessages()
   try {
     await updateAdminBookStatus(book.id, nextStatus)
-    successMessage.value = nextStatus ? 'Đã hiển thị lại sách.' : 'Đã ẩn sách khỏi thư viện.'
+    const msg = nextStatus ? 'Đã hiển thị lại sách.' : 'Đã ẩn sách khỏi thư viện.'
+    successMessage.value = msg
+    notify.info(msg)
     await loadBooks()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Không thể thay đổi trạng thái sách.'
+    const msg = error instanceof Error ? error.message : 'Không thể thay đổi trạng thái sách.'
+    errorMessage.value = msg
+    notify.error(msg)
   }
 }
 
@@ -295,10 +306,14 @@ async function deleteBookItem(book) {
   clearMessages()
   try {
     await deleteAdminBook(book.id)
-    successMessage.value = `Đã xóa cuốn sách "${book.title}" thành công.`
+    const msg = `Đã xóa cuốn sách "${book.title}" thành công.`
+    successMessage.value = msg
+    notify.success(msg)
     await loadBooks()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Không thể xóa sách.'
+    const msg = error instanceof Error ? error.message : 'Không thể xóa sách.'
+    errorMessage.value = msg
+    notify.error(msg)
   }
 }
 

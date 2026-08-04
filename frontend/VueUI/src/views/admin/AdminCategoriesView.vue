@@ -14,7 +14,7 @@ import {
   updateAdminCategory,
   deleteAdminCategory
 } from '../../services/api'
-import { toast } from 'vue-sonner'
+import notify from '../../services/toast'
 
 const categories = ref([])
 const isLoading = ref(false)
@@ -52,7 +52,7 @@ async function loadCategories() {
     categories.value = await getCategories()
   } catch (error) {
     console.error(error)
-    toast.error('Không thể tải danh sách danh mục.')
+    notify.error('Không thể tải danh sách danh mục.')
   } finally {
     isLoading.value = false
   }
@@ -84,16 +84,16 @@ async function saveCategory() {
     const payload = { name: categoryForm.value.name.trim() }
     if (editingCategoryId.value) {
       await updateAdminCategory(editingCategoryId.value, payload)
-      toast.success('Cập nhật danh mục thành công.')
+      notify.success('Cập nhật danh mục thành công.')
     } else {
       await createAdminCategory(payload)
-      toast.success('Thêm danh mục thành công.')
+      notify.success('Thêm danh mục thành công.')
     }
     closeModal()
     await loadCategories()
   } catch (error) {
     console.error(error)
-    toast.error(error instanceof Error ? error.message : 'Không thể lưu danh mục.')
+    notify.error(error instanceof Error ? error.message : 'Không thể lưu danh mục.')
   } finally {
     isSaving.value = false
   }
@@ -104,11 +104,11 @@ async function handleDeleteCategory(id) {
 
   try {
     await deleteAdminCategory(id)
-    toast.success('Xóa danh mục thành công.')
+    notify.success('Xóa danh mục thành công.')
     await loadCategories()
   } catch (error) {
     console.error(error)
-    toast.error(error instanceof Error ? error.message : 'Không thể xóa danh mục.')
+    notify.error(error instanceof Error ? error.message : 'Không thể xóa danh mục.')
   }
 }
 
