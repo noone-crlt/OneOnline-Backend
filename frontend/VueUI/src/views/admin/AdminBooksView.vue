@@ -21,6 +21,7 @@ import {
   getAdminBook,
   getAdminBookFormOptions,
   getAdminBooks,
+  getAdminBookStats,
   getFileUrl,
   updateAdminBook,
   updateAdminBookStatus,
@@ -51,8 +52,7 @@ const pageSize = 10
 const totalPages = computed(() => Math.max(1, Math.ceil(totalBooks.value / pageSize)))
 const modalTitle = computed(() => editingBookId.value ? 'Chỉnh sửa sách' : 'Thêm sách mới')
 
-const activeBooksCount = computed(() => books.value.filter(b => b.isActive).length)
-const inactiveBooksCount = computed(() => books.value.filter(b => !b.isActive).length)
+const bookStats = ref({ total: 0, active: 0, inactive: 0 })
 const visiblePageNumbers = computed(() => {
   const total = totalPages.value
   const current = currentPage.value
@@ -131,6 +131,19 @@ function resetForm() {
   coverPreview.value = ''
   pdfFile.value = null
   pdfFileName.value = ''
+}
+
+async function loadBookStats() {
+  try {
+    const stats = await getAdminBookStats()
+    bookStats.value = {
+      total: Number(stats?.total ?? 0),
+      active: Number(stats?.active ?? 0),
+      inactive: Number(stats?.inactive ?? 0),
+    }
+  } catch (_) {
+    // silently fail – stats are non-critical
+  }
 }
 
 async function loadBooks() {
@@ -270,6 +283,7 @@ async function saveBook() {
     isModalOpen.value = false
     resetForm()
     await loadBooks()
+    loadBookStats()
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Không thể lưu sách.'
     errorMessage.value = msg
@@ -292,6 +306,7 @@ async function toggleBookStatus(book) {
     successMessage.value = msg
     notify.info(msg)
     await loadBooks()
+    loadBookStats()
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Không thể thay đổi trạng thái sách.'
     errorMessage.value = msg
@@ -310,6 +325,7 @@ async function deleteBookItem(book) {
     successMessage.value = msg
     notify.success(msg)
     await loadBooks()
+    loadBookStats()
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Không thể xóa sách.'
     errorMessage.value = msg
@@ -337,7 +353,7 @@ watch([selectedCategory, selectedStatus], () => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadBooks(), loadFormOptions()])
+  await Promise.all([loadBooks(), loadFormOptions(), loadBookStats()])
 })
 
 onBeforeUnmount(() => clearTimeout(searchTimer))
@@ -366,7 +382,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
           <PhBooks :size="22" weight="duotone" />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ totalBooks }}</span>
+          <span class="stat-value">{{ bookStats.total }}</span>
           <span class="stat-label">Tổng sách</span>
         </div>
       </div>
@@ -375,7 +391,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
           <PhEye :size="22" weight="duotone" />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ activeBooksCount }}</span>
+          <span class="stat-value">{{ bookStats.active }}</span>
           <span class="stat-label">Đang hiển thị</span>
         </div>
       </div>
@@ -384,7 +400,7 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
           <PhEyeSlash :size="22" weight="duotone" />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ inactiveBooksCount }}</span>
+          <span class="stat-value">{{ bookStats.inactive }}</span>
           <span class="stat-label">Đã ẩn</span>
         </div>
       </div>

@@ -350,6 +350,10 @@ export function getAdminBookFormOptions() {
   return apiFetch('/api/admin/books/form-options', { headers: authHeaders() })
 }
 
+export function getAdminBookStats() {
+  return apiFetch('/api/admin/books/stats', { headers: authHeaders() })
+}
+
 function buildBookFormData(data, coverFile, pdfFile) {
   const formData = new FormData()
   formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }))

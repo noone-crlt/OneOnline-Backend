@@ -18,12 +18,15 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 import com.thientri.book_area.dto.request.catalog.BookCreateRequest;
 import com.thientri.book_area.dto.request.catalog.BookUpdateRequest;
 import com.thientri.book_area.dto.response.ApiResponse;
 import com.thientri.book_area.dto.response.catalog.AdminBookDetailResponse;
 import com.thientri.book_area.dto.response.catalog.AdminBookListResponse;
 import com.thientri.book_area.dto.response.catalog.BookFormOptionsResponse;
+import com.thientri.book_area.repository.catalog.BookRepository;
 import com.thientri.book_area.service.catalog.IBookService;
 
 import jakarta.validation.Valid;
@@ -34,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminBookManagementController {
 	private final IBookService bookService;
+	private final BookRepository bookRepository;
 
 	@GetMapping
 	public ResponseEntity<ApiResponse<Page<AdminBookListResponse>>> getBooks(
@@ -44,6 +48,17 @@ public class AdminBookManagementController {
 			@RequestParam(required = false) Boolean isActive) {
 		Pageable pageable = PageRequest.of(page, Math.min(Math.max(size, 1), 100), Sort.by("createdAt").descending());
 		return ResponseEntity.ok(ApiResponse.success(bookService.getAdminBooks(q, category, isActive, pageable)));
+	}
+
+	@GetMapping("/stats")
+	public ResponseEntity<ApiResponse<Map<String, Long>>> getBookStats() {
+		long total = bookRepository.count();
+		long active = bookRepository.countByIsActive(true);
+		long inactive = bookRepository.countByIsActive(false);
+		return ResponseEntity.ok(ApiResponse.success(Map.of(
+				"total", total,
+				"active", active,
+				"inactive", inactive)));
 	}
 
 	@GetMapping("/form-options")

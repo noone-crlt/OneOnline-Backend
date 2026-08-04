@@ -88,4 +88,6 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 			ORDER BY SUM(oi.quantity) DESC, SUM(oi.price * oi.quantity) DESC
 			""")
 	List<Object[]> findTopSellingBookStats(Pageable pageable);
+
+	long countByIsActive(boolean isActive);
 }
