@@ -158,6 +158,10 @@ export async function apiFetch(path, init = {}) {
         ? String(payload.message)
         : response.statusText || 'Request failed'
 
+    if ((response.status === 403 || response.status === 401) && message.toLowerCase().includes('khóa')) {
+      clearStoredSession()
+    }
+
     throw new ApiError(message, response.status, payload)
   }
   if (payload && typeof payload === 'object' && payload.status === 'success' && 'data' in payload) {

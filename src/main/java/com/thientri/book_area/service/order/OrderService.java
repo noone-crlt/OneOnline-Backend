@@ -59,6 +59,16 @@ public class OrderService {
 
 	@Transactional
 	public CheckoutResponse checkout(User user, CreateOrderRequest request, String clientIp) {
+		if (user.getStatus() == com.thientri.book_area.model.user.UserStatus.BANNED) {
+			String formattedDate = user.getBannedAt() != null
+					? user.getBannedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+					: "chưa xác định";
+			String reason = (user.getBanReason() != null && !user.getBanReason().isBlank())
+					? user.getBanReason()
+					: "Vi phạm quy định của hệ thống.";
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa vào lúc " + formattedDate + ". Lý do: " + reason);
+		}
+
 		log.info("Tạo đơn hàng: userId={}, paymentMethod={}, addressId={}", user.getId(),
 				request.getPaymentMethod(), request.getAddressId());
 		List<CartItem> cartItems = cartItemRepository.findByUserId(user.getId());

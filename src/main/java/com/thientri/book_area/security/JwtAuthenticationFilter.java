@@ -1,6 +1,7 @@
 package com.thientri.book_area.security;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.thientri.book_area.model.user.User;
+import com.thientri.book_area.model.user.UserStatus;
 import com.thientri.book_area.repository.user.UserRepository;
 
 import jakarta.servlet.FilterChain;
@@ -33,12 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		this.userRepository = userRepository;
 	}
 
-	// Máy quét JWT các request gửi đến
 	@Override
 	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 			@NonNull FilterChain filterChain) throws ServletException, IOException {
 
-		// Kiểm tra request có JWT và Header có bắt đầu bằng "Bearer " hay không
 		final String authHeader = request.getHeader("Authorization");
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 			filterChain.doFilter(request, response);
@@ -64,6 +64,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 				User userAuth = userRepository.findByEmail(userEmail).orElse(null);
 
 				if (userAuth != null) {
+					if (userAuth.getStatus() == UserStatus.BANNED) {
+						String formattedDate = userAuth.getBannedAt() != null
+								? userAuth.getBannedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+								: "chưa xác định";
+						String reason = (userAuth.getBanReason() != null && !userAuth.getBanReason().isBlank())
+								? userAuth.getBanReason()
+								: "Vi phạm quy định của hệ thống.";
+
+						response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+						response.setContentType("application/json;charset=UTF-8");
+						String json = String.format(
+								"{\"status\":\"error\",\"message\":\"Tài khoản của bạn đã bị khóa vào lúc %s. Lý do: %s\",\"data\":null}",
+								formattedDate, reason);
+						response.getWriter().write(json);
+						return;
+					}
+
 					UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userAuth,
 							null, userAuth.getAuthorities());
 

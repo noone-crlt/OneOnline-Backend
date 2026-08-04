@@ -32,6 +32,10 @@ public class CartService {
 
 	@Transactional
 	public CartResponse addItem(User user, AddToCartRequest request) {
+		if (user.getStatus() == com.thientri.book_area.model.user.UserStatus.BANNED) {
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa, không thể thêm sản phẩm vào giỏ hàng.");
+		}
+
 		BookEdition edition = editionRepository.findById(request.getEditionId())
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiên bản sách."));
 		validateAvailability(edition, request.getQuantity());
