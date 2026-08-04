@@ -24,7 +24,15 @@ public class AdminAuthorController {
 
 	@GetMapping
 	public ResponseEntity<ApiResponse<List<AuthorResponse>>> getAllAuthors() {
-		return ResponseEntity.ok(ApiResponse.success(authorRepository.findAllWithBookCount()));
+		List<Object[]> rows = authorRepository.findAllWithBookCountRaw();
+		List<AuthorResponse> result = rows.stream().map(row -> AuthorResponse.builder()
+				.id(((Number) row[0]).longValue())
+				.name((String) row[1])
+				.bio((String) row[2])
+				.avatar((String) row[3])
+				.bookCount(((Number) row[4]).longValue())
+				.build()).toList();
+		return ResponseEntity.ok(ApiResponse.success(result));
 	}
 
 	@PostMapping
