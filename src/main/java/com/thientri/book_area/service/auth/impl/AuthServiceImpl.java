@@ -76,16 +76,21 @@ public class AuthServiceImpl implements IAuthService {
 	@Override
 	@Transactional
 	public AuthResponse login(LoginRequest request) {
+		User user = userRepository.findByEmail(request.getEmail())
+				.orElseThrow(() -> new BadRequestException("Email hoặc mật khẩu không đúng."));
 
-		// 1. Kích hoạt Spring Security kiểm tra Email và Password
-		// Nếu sai, nó sẽ tự động ném ra BadCredentialsException (Sai mật khẩu/tài
-		// khoản)
+		if (user.getStatus() == UserStatus.BANNED) {
+			String formattedDate = user.getBannedAt() != null
+					? user.getBannedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+					: "chưa xác định";
+			String reason = (user.getBanReason() != null && !user.getBanReason().isBlank())
+					? user.getBanReason()
+					: "Vi phạm quy định của hệ thống.";
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa vào lúc " + formattedDate + ". Lý do khóa: " + reason);
+		}
+
 		authenticationManager
 				.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-
-		// 2. Lấy thông tin User từ Database (Chắc chắn tồn tại vì bước 1 đã qua)
-		User user = userRepository.findByEmail(request.getEmail())
-				.orElseThrow(() -> new BadRequestException("Tài khoản không tồn tại."));
 
 		return createSession(user);
 	}
@@ -96,6 +101,16 @@ public class AuthServiceImpl implements IAuthService {
 		GoogleUserInfo googleUser = googleIdentityService.verify(request.getCredential());
 		User user = userRepository.findByEmailIgnoreCase(googleUser.email())
 				.orElseGet(() -> createGoogleUser(googleUser));
+
+		if (user.getStatus() == UserStatus.BANNED) {
+			String formattedDate = user.getBannedAt() != null
+					? user.getBannedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+					: "chưa xác định";
+			String reason = (user.getBanReason() != null && !user.getBanReason().isBlank())
+					? user.getBanReason()
+					: "Vi phạm quy định của hệ thống.";
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa vào lúc " + formattedDate + ". Lý do khóa: " + reason);
+		}
 
 		if ((user.getFullName() == null || user.getFullName().isBlank()) && !googleUser.fullName().isBlank()) {
 			user.setFullName(googleUser.fullName());

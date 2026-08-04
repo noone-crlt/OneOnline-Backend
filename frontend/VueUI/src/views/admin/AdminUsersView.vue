@@ -44,26 +44,39 @@ async function loadUsers() {
 
 async function handleToggleBan(user) {
   const isBanned = user.status === 'BANNED'
-  const nextAction = isBanned ? 'gỡ khóa' : 'khóa'
-  const confirmMsg = isBanned
-    ? `Bạn có chắc chắn muốn gỡ khóa tài khoản cho "${user.fullName || user.email}" không?`
-    : `Bạn có chắc chắn muốn khóa tài khoản "${user.fullName || user.email}" không?\nTài khoản bị khóa sẽ không thể đăng nhập vào hệ thống.`
 
-  const confirmed = await confirmDialog(
-    `Xác nhận ${nextAction} tài khoản`,
-    confirmMsg,
-    isBanned ? 'Gỡ khóa' : 'Khóa tài khoản',
-    'Hủy'
-  )
+  if (isBanned) {
+    const confirmed = await confirmDialog(
+      'Xác nhận gỡ khóa tài khoản',
+      `Bạn có chắc chắn muốn gỡ khóa tài khoản cho "${user.fullName || user.email}" không?`,
+      'Gỡ khóa',
+      'Hủy'
+    )
+    if (!confirmed) return
 
-  if (!confirmed) return
+    try {
+      await toggleBanAdminUser(user.id, false, '')
+      notify.success('Đã gỡ khóa tài khoản thành công.')
+      await loadUsers()
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Không thể gỡ khóa tài khoản.')
+    }
+  } else {
+    const reasonInput = window.prompt(
+      `Nhập lý do khóa tài khoản cho người dùng "${user.fullName || user.email}":`,
+      'Vi phạm quy định sử dụng hệ thống.'
+    )
+    if (reasonInput === null) return
 
-  try {
-    await toggleBanAdminUser(user.id, !isBanned)
-    notify.success(isBanned ? 'Đã gỡ khóa tài khoản thành công.' : 'Đã khóa tài khoản người dùng thành công.')
-    await loadUsers()
-  } catch (error) {
-    notify.error(error instanceof Error ? error.message : 'Không thể thay đổi trạng thái tài khoản.')
+    const reason = reasonInput.trim() || 'Vi phạm quy định của hệ thống.'
+
+    try {
+      await toggleBanAdminUser(user.id, true, reason)
+      notify.success('Đã khóa tài khoản người dùng thành công.')
+      await loadUsers()
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Không thể khóa tài khoản.')
+    }
   }
 }
 
@@ -84,6 +97,13 @@ function formatDate(dateStr) {
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return dateStr
   return date.toLocaleDateString('vi-VN')
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return 'Chưa xác định'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 
 watch([selectedRole, selectedStatus], () => {
@@ -172,6 +192,14 @@ onMounted(() => {
               <span class="status-badge" :class="user.status === 'BANNED' ? 'danger' : 'success'">
                 {{ user.status === 'BANNED' ? 'Bị khóa' : 'Hoạt động' }}
               </span>
+              <div v-if="user.status === 'BANNED'" class="ban-details">
+                <small class="ban-reason" :title="user.banReason">
+                  🚫 <strong>Lý do:</strong> {{ user.banReason || 'Vi phạm quy định' }}
+                </small>
+                <small class="ban-date">
+                  📅 <strong>Ngày khóa:</strong> {{ formatDateTime(user.bannedAt) }}
+                </small>
+              </div>
             </td>
             <td class="actions-col">
               <div class="action-buttons">
@@ -407,6 +435,27 @@ onMounted(() => {
 .status-badge.danger {
   background: #fef2f2;
   color: #ef4444;
+}
+
+.ban-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #71717a;
+}
+
+.ban-reason {
+  color: #dc2626;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ban-date {
+  color: #52525b;
 }
 
 .actions-col {

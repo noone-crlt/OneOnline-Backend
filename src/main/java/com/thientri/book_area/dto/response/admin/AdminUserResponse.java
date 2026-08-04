@@ -21,5 +21,7 @@ public class AdminUserResponse {
 	private String phone;
 	private List<String> roles;
 	private String status;
+	private String banReason;
+	private LocalDateTime bannedAt;
 	private LocalDateTime createdAt;
 }

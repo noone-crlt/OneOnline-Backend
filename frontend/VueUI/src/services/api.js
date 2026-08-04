@@ -360,8 +360,12 @@ export function getAdminUsers(params = {}) {
   })
 }
 
-export function toggleBanAdminUser(userId, isBanned) {
-  return apiFetch(`/api/admin/users/${userId}/ban?isBanned=${isBanned}`, {
+export function toggleBanAdminUser(userId, isBanned, reason = '') {
+  const query = new URLSearchParams({ isBanned: String(isBanned) })
+  if (reason && reason.trim()) {
+    query.set('reason', reason.trim())
+  }
+  return apiFetch(`/api/admin/users/${userId}/ban?${query.toString()}`, {
     method: 'PATCH',
     headers: authHeaders(),
   })

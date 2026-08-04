@@ -9,5 +9,5 @@ public interface IAdminUserService {
 
 	Page<AdminUserResponse> getAdminUsers(String search, String role, String status, Pageable pageable);
 
-	void toggleBanUser(Long userId, boolean isBanned);
+	void toggleBanUser(Long userId, boolean isBanned, String reason);
 }

@@ -1,5 +1,6 @@
 package com.thientri.book_area.service.admin.impl;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -44,7 +45,7 @@ public class AdminUserServiceImpl implements IAdminUserService {
 
 	@Override
 	@Transactional
-	public void toggleBanUser(Long userId, boolean isBanned) {
+	public void toggleBanUser(Long userId, boolean isBanned, String reason) {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
 
@@ -57,8 +58,12 @@ public class AdminUserServiceImpl implements IAdminUserService {
 
 		if (isBanned) {
 			user.setStatus(UserStatus.BANNED);
+			user.setBanReason(reason != null && !reason.isBlank() ? reason.trim() : "Vi phạm quy định của hệ thống.");
+			user.setBannedAt(LocalDateTime.now());
 		} else {
 			user.setStatus(UserStatus.ACTIVE);
+			user.setBanReason(null);
+			user.setBannedAt(null);
 		}
 
 		userRepository.save(user);
@@ -75,6 +80,8 @@ public class AdminUserServiceImpl implements IAdminUserService {
 				.phone(user.getPhone())
 				.roles(roleNames)
 				.status(user.getStatus() == null ? "ACTIVE" : user.getStatus().name())
+				.banReason(user.getBanReason())
+				.bannedAt(user.getBannedAt())
 				.createdAt(user.getCreatedAt())
 				.build();
 	}

@@ -41,9 +41,10 @@ public class AdminUserController {
 	@PatchMapping("/{id}/ban")
 	public ResponseEntity<ApiResponse<Void>> toggleBanUser(
 			@PathVariable Long id,
-			@RequestParam boolean isBanned) {
+			@RequestParam boolean isBanned,
+			@RequestParam(required = false) String reason) {
 
-		adminUserService.toggleBanUser(id, isBanned);
+		adminUserService.toggleBanUser(id, isBanned, reason);
 		String message = isBanned ? "Đã khóa tài khoản người dùng." : "Đã gỡ khóa tài khoản người dùng.";
 		return ResponseEntity.ok(ApiResponse.success(message, null));
 	}
