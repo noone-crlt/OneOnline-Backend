@@ -137,7 +137,7 @@ onMounted(() => {
       <section class="catalog-section">
         <!-- NOT LOGGED IN STATE -->
         <div v-if="!authUser" class="empty-state empty-state-action">
-          <div class="empty-icon-circle">🔒</div>
+          <div class="empty-icon-circle"><i class="ri-lock-2-line"></i></div>
           <h3>Vui lòng đăng nhập</h3>
           <p>Bạn cần đăng nhập tài khoản để truy cập kho sách cá nhân của mình.</p>
           <RouterLink to="/login" class="btn btn-primary-action">Đăng nhập ngay</RouterLink>
@@ -178,7 +178,7 @@ onMounted(() => {
 
           <!-- Empty Purchased Books State -->
           <div v-else-if="purchasedBooks.length === 0" class="empty-state empty-state-action">
-            <div class="empty-icon-circle">📚</div>
+            <div class="empty-icon-circle"><i class="ri-book-shelf-line"></i></div>
             <h3>Thư viện của bạn đang trống</h3>
             <p>Bạn chưa sở hữu tác phẩm nào. Hãy khám phá kho sách và mua ngay để thưởng thức!</p>
             <RouterLink to="/" class="btn btn-primary-action">Khám phá sách ngay</RouterLink>
@@ -211,9 +211,9 @@ onMounted(() => {
                 <p class="purchased-book-author">{{ item.authorName || 'One Online' }}</p>
 
                 <button class="action-read-btn" :class="getFormatBadgeClass(item.format)" @click="handleAction(item)">
-                  <template v-if="item.format === 'AUDIOBOOK'">🎧 Nghe ngay</template>
-                  <template v-else-if="item.format === 'PHYSICAL'">📦 Xem chi tiết</template>
-                  <template v-else>📖 Đọc ngay</template>
+                  <template v-if="item.format === 'AUDIOBOOK'"><i class="ri-headphones-fill"></i> Nghe ngay</template>
+                  <template v-else-if="item.format === 'PHYSICAL'"><i class="ri-box-3-line"></i> Xem chi tiết</template>
+                  <template v-else><i class="ri-book-open-line"></i> Đọc ngay</template>
                 </button>
               </div>
             </article>
@@ -530,6 +530,10 @@ onMounted(() => {
 }
 
 .action-read-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   margin-top: auto;
   width: 100%;
   padding: 0.55rem;
@@ -539,6 +543,10 @@ onMounted(() => {
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.action-read-btn i {
+  font-size: 1.05rem;
 }
 
 .action-read-btn.badge-ebook {
