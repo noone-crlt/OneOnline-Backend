@@ -9,7 +9,7 @@ import AppFooter from '../components/layout/AppFooter.vue'
 
 const router = useRouter()
 
-const activeTab = ref('library') // 'library', 'profile', 'orders', 'addresses'
+const activeTab = ref('profile') // 'profile', 'orders', 'addresses'
 
 // Profile form state
 const fullName = ref(authUser.value?.fullName || 'Khách hàng One Online')
@@ -248,19 +248,6 @@ onMounted(() => {
 
           <nav class="profile-menu-links">
             <button 
-              :class="['menu-link-btn', { active: activeTab === 'library' }]" 
-              @click="activeTab = 'library'"
-            >
-              <span class="link-icon">
-                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                </svg>
-              </span>
-              <span>Thư viện của tôi</span>
-            </button>
-
-            <button 
               :class="['menu-link-btn', { active: activeTab === 'profile' }]" 
               @click="activeTab = 'profile'"
             >
@@ -303,56 +290,8 @@ onMounted(() => {
 
         <!-- Active View Area -->
         <section class="profile-content-area" aria-label="Nội dung chi tiết tài khoản">
-          <!-- SUCCESS TOAST -->
-
-          <!-- TAB: MY LIBRARY -->
-          <div v-if="activeTab === 'library'" class="pane-library">
-            <div class="pane-header">
-              <span class="pane-kicker">Digital Assets</span>
-              <h3 class="pane-title">Thư viện sách của tôi</h3>
-            </div>
-
-            <p v-if="libraryError" class="profile-state profile-state-error" role="alert">{{ libraryError }}</p>
-            <p v-else-if="isLibraryLoading" class="profile-state">Đang tải thư viện của bạn...</p>
-            <div v-else-if="purchasedBooks.length === 0" class="profile-state">
-              <strong>Thư viện đang trống</strong>
-              <span>Sách điện tử đã thanh toán sẽ xuất hiện tại đây.</span>
-              <RouterLink to="/library">Khám phá sách</RouterLink>
-            </div>
-
-            <div v-else class="purchased-books-grid">
-              <article 
-                v-for="item in purchasedBooks" 
-                :key="item.id" 
-                class="purchased-book-card"
-              >
-                <div class="p-book-cover-frame">
-                  <div class="p-book-cover">
-                    <img v-if="item.coverUrl" :src="item.coverUrl" :alt="`Bìa sách ${item.bookTitle}`" />
-                    <span v-else class="cover-fallback">{{ item.bookTitle?.charAt(0) || 'S' }}</span>
-                  </div>
-                </div>
-
-                <div class="p-book-meta">
-                  <div class="format-badge-row">
-                    <span :class="['tech-tag', item.format === 'AUDIOBOOK' ? 'tag-minio' : 'tag-blue']">{{ item.format === 'AUDIOBOOK' ? 'AUDIO' : 'E-BOOK' }}</span>
-                  </div>
-                  <h4 class="p-book-title">{{ item.bookTitle }}</h4>
-                  <p class="p-book-author">{{ item.authorName }}</p>
-                  
-                  <button 
-                    class="btn btn-secondary btn-p-read" 
-                    @click="startReading(item.slug)"
-                  >
-                    {{ item.format === 'AUDIOBOOK' ? 'Nghe ngay' : 'Đọc ngay' }}
-                  </button>
-                </div>
-              </article>
-            </div>
-          </div>
-
           <!-- TAB: PERSONAL PROFILE -->
-          <div v-else-if="activeTab === 'profile'" class="pane-profile">
+          <div v-if="activeTab === 'profile'" class="pane-profile">
             <div class="pane-header">
               <span class="pane-kicker">Profile Details</span>
               <h3 class="pane-title">Thông tin cá nhân</h3>
