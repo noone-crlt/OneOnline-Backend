@@ -437,6 +437,11 @@ public class BookServiceImpl implements IBookService {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách với ID: " + bookId));
 
+        // 1. Gỡ bỏ liên kết ManyToMany để xóa bảng trung gian (book_categories, book_authors)
+        book.getCategories().clear();
+        book.getAuthors().clear();
+
+        // 2. Dọn dẹp tệp tin trên MinIO nếu có
         try {
             List<String> oldImages = readStoredImageUrls(book.getImages());
             for (String oldPath : oldImages) {
@@ -458,13 +463,8 @@ public class BookServiceImpl implements IBookService {
             log.warn("Lỗi dọn dẹp tệp MinIO khi xóa sách ID {}: {}", bookId, e.getMessage());
         }
 
-        try {
-            bookRepository.delete(book);
-            log.info("Đã xóa thành công sách ID: {}", bookId);
-        } catch (DataIntegrityViolationException exception) {
-            book.setIsActive(false);
-            bookRepository.save(book);
-            throw new BadRequestException("Sách này đã có lịch sử đơn hàng/giao dịch trong hệ thống. Hệ thống đã tự động chuyển sách sang trạng thái Ẩn thay vì xóa hẳn.");
-        }
+        // 3. Thực hiện xóa vật lý sách khỏi CSDL
+        bookRepository.delete(book);
+        log.info("Đã xóa thành công sách ID: {}", bookId);
     }
 }

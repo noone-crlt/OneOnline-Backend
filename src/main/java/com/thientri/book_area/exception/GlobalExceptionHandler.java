@@ -67,7 +67,8 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException exception,
 			HttpServletRequest request) {
 		log.error("Lỗi ràng buộc dữ liệu tại {}", request.getRequestURI(), exception);
-		return error(HttpStatus.CONFLICT, "Dữ liệu đã thay đổi hoặc không còn hợp lệ. Vui lòng tải lại và thử lại.");
+		String message = "Dữ liệu không thể xóa/thay đổi do đã phát sinh giao dịch hoặc đơn hàng liên quan trong hệ thống. Bạn có thể chọn Ẩn sản phẩm.";
+		return error(HttpStatus.BAD_REQUEST, message);
 	}
 
 	@ExceptionHandler(NoResourceFoundException.class)
