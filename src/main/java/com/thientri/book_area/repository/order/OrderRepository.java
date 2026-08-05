@@ -16,4 +16,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
 	// Lấy lịch sử mua hàng của một người dùng (hỗ trợ phân trang)
 	Page<Order> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
+	java.util.List<Order> findByUserIdAndStatusIn(Long userId, java.util.List<String> statuses);
 }

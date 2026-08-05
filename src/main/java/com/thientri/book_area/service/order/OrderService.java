@@ -255,7 +255,7 @@ public class OrderService {
 
 	private void grantDigitalBooks(Order order) {
 		order.getOrderItems().stream().map(OrderItem::getEdition)
-				.filter(edition -> !"PHYSICAL".equals(edition.getFormat()))
+				.filter(edition -> edition != null)
 				.filter(edition -> !libraryRepository.existsByUserIdAndEditionId(order.getUser().getId(),
 						edition.getId()))
 				.forEach(edition -> libraryRepository
