@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import com.thientri.book_area.dto.response.catalog.AdminBookListResponse;
+import com.thientri.book_area.repository.catalog.BookRepository;
 import com.thientri.book_area.service.catalog.IBookService;
 
 class AdminBookManagementControllerTest {
@@ -21,10 +22,11 @@ class AdminBookManagementControllerTest {
 	@Test
 	void listsBooksWithRequestedFiltersAndBoundedPageSize() {
 		IBookService bookService = mock(IBookService.class);
+		BookRepository bookRepository = mock(BookRepository.class);
 		when(bookService.getAdminBooks(any(), any(), any(), any(Pageable.class)))
 				.thenReturn(new PageImpl<>(List.of(new AdminBookListResponse(1L, "Sách", "sach", null,
 						List.of(), List.of(), List.of(), true))));
-		AdminBookManagementController controller = new AdminBookManagementController(bookService);
+		AdminBookManagementController controller = new AdminBookManagementController(bookService, bookRepository);
 
 		var response = controller.getBooks(2, 500, "tìm", "Văn học", true);
 
