@@ -54,7 +54,7 @@ public class Payment {
 	private String transactionId;
 
 	// THÊM MỚI: Lưu log JSON phản hồi từ cổng thanh toán (để debug khi có lỗi)
-	@Column(name = "gateway_response", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "gateway_response", length = 4000)
 	private String gatewayResponse;
 
 	@Column(name = "paid_at")

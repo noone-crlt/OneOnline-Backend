@@ -29,8 +29,7 @@ public class Publisher {
 	@Column(name = "name", length = 255, nullable = false)
 	private String name;
 
-	// Sửa lại chuẩn SQL Server
-	@Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "description", length = 4000)
 	private String description;
 
 	@CreationTimestamp

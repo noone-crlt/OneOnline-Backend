@@ -45,7 +45,7 @@ public class Book {
 	@Column(name = "slug", length = 255, nullable = false, unique = true)
 	private String slug;
 
-	@Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "description", length = 4000)
 	private String description;
 
 	@ManyToOne
@@ -73,7 +73,7 @@ public class Book {
 	@Builder.Default
 	private Set<Author> authors = new HashSet<>();
 
-	@Column(name = "images", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "images", length = 4000)
 	private String images;
 
 	// THÊM MỚI: Liên kết 1 cuốn sách gốc với nhiều định dạng (Variant)

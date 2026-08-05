@@ -48,8 +48,7 @@ public class Review {
 	@Column(name = "rating", nullable = false)
 	private Integer rating;
 
-	// SỬA: Đổi TEXT thành NVARCHAR(MAX)
-	@Column(name = "comment", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "comment", length = 4000)
 	private String comment;
 
 	// THÊM MỚI: Cơ chế kiểm duyệt bình luận (Admin duyệt mới được hiện)

@@ -36,7 +36,7 @@ public class Address {
 	@Column(name = "recipient_phone", length = 20, nullable = false)
 	private String recipientPhone;
 
-	@Column(name = "address_line", columnDefinition = "NVARCHAR(MAX)", nullable = false)
+	@Column(name = "address_line", length = 1000, nullable = false)
 	private String addressLine;
 
 	@Column(name = "province_id", length = 50, nullable = false)

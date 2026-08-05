@@ -89,5 +89,6 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 			""")
 	List<Object[]> findTopSellingBookStats(Pageable pageable);
 
-	long countByIsActive(boolean isActive);
+	@Query("SELECT COUNT(b) FROM Book b WHERE b.isActive = :isActive")
+	long countByIsActive(@Param("isActive") Boolean isActive);
 }

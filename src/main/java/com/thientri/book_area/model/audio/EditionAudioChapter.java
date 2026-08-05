@@ -39,8 +39,7 @@ public class EditionAudioChapter {
 	@Column(name = "chapter_number", nullable = false)
 	private Integer chapterNumber;
 
-	// Bắt buộc dùng NVARCHAR(MAX) cho đường dẫn file âm thanh
-	@Column(name = "audio_file_name", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "audio_file_name", length = 1000)
 	private String audioFileName;
 
 	// Thời lượng tính bằng giây

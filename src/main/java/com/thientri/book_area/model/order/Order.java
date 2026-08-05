@@ -57,7 +57,7 @@ public class Order {
 	@Column(name = "recipient_phone", length = 20)
 	private String recipientPhone;
 
-	@Column(name = "shipping_address_line", columnDefinition = "NVARCHAR(MAX)")
+	@Column(name = "shipping_address_line", length = 1000)
 	private String shippingAddressLine;
 
 	@Column(name = "shipping_province_name", length = 100)
