@@ -50,9 +50,6 @@ public class EngagementMapper {
         if (edition.getCoverObjectName() != null && !edition.getCoverObjectName().isBlank()) {
             return edition.getCoverObjectName();
         }
-        if (edition.getCoverUrl() != null && !edition.getCoverUrl().isBlank()) {
-            return edition.getCoverUrl();
-        }
         if (book != null && book.getImages() != null && !book.getImages().isBlank()) {
             try {
                 List<String> rawPaths = objectMapper.readValue(book.getImages(), new TypeReference<List<String>>() {});
