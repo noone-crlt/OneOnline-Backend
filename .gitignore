@@ -37,6 +37,7 @@ build/
 backend.err.log
 backend.log
 minio-docker/minio-data/
+src/main/resources/application-local.properties
 
 ### Local Codex/agent files ###
 .agents/
