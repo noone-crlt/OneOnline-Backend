@@ -74,7 +74,8 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/google", "/api/auth/register", "/api/auth/refresh")
 						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**", "/api/categories",
-								"/api/categories/**", "/api/authors", "/api/authors/**", "/api/public/**", "/api/files/download")
+								"/api/categories/**", "/api/authors", "/api/authors/**", "/api/public/**", "/api/files/download",
+								"/api/reviews/book/**")
 						.permitAll().requestMatchers(HttpMethod.POST, "/api/payments/sepay-webhook").permitAll()
 						.requestMatchers("/api/admin/**").hasAuthority("ADMIN").requestMatchers("/api/editions/**")
 						.hasAuthority("ADMIN")
