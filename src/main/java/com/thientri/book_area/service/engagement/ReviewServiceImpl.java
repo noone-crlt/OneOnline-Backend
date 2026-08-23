@@ -31,7 +31,7 @@ public class ReviewServiceImpl implements ReviewService {
 	@Transactional
 	public ReviewResponse createOrUpdateReview(User user, ReviewRequest request) {
 		Book book = bookRepository.findById(request.getBookId())
-				.orElseThrow(() -> new ResourceNotFoundException("Sách", "id", request.getBookId()));
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tác phẩm với ID: " + request.getBookId()));
 
 		Optional<Review> existingReviewOpt = reviewRepository.findByUserIdAndBookId(user.getId(), book.getId());
 
