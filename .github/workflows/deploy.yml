@@ -37,6 +37,12 @@ jobs:
       - name: Build backend
         run: ./mvnw package -DskipTests
 
+      - name: Test VPS connection
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: timeout 10 bash -c 'cat < /dev/null > /dev/tcp/$VPS_HOST/$VPS_PORT'
+
       - name: Deploy backend to VPS
         uses: appleboy/ssh-action@v1.2.5
         with:
