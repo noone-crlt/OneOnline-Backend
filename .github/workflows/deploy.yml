@@ -1,4 +1,4 @@
-name: Test, build and deploy backend
+name: Backend CI and update deploy branch
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: deploy-backend-main
   cancel-in-progress: false
 
 jobs:
-  test-build-deploy:
+  test-build-update-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -37,23 +37,7 @@ jobs:
       - name: Build backend
         run: ./mvnw package -DskipTests
 
-      - name: Test VPS connection
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-        run: timeout 10 bash -c 'cat < /dev/null > /dev/tcp/$VPS_HOST/$VPS_PORT'
-
-      - name: Deploy backend to VPS
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          port: ${{ secrets.VPS_PORT }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/oneonline/OneOnline-Backend
-            git pull origin main
-
-            cd /opt/oneonline
-            docker compose up -d --build backend
+      - name: Update deploy branch
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git push origin HEAD:deploy --force
