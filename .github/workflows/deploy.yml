@@ -41,3 +41,85 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           git push origin HEAD:deploy --force
+
+      - name: Deploy backend to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SEPAY_BANK_CODE: ${{ secrets.SEPAY_BANK_CODE }}
+          SEPAY_ACCOUNT_NUMBER: ${{ secrets.SEPAY_ACCOUNT_NUMBER }}
+          SEPAY_ACCOUNT_NAME: ${{ secrets.SEPAY_ACCOUNT_NAME }}
+          SEPAY_WEBHOOK_SECRET: ${{ secrets.SEPAY_WEBHOOK_SECRET }}
+          SEPAY_PAYMENT_TIMEOUT_MINUTES: ${{ secrets.SEPAY_PAYMENT_TIMEOUT_MINUTES }}
+        run: |
+          set -euo pipefail
+
+          : "${VPS_HOST:?VPS_HOST is required}"
+          : "${VPS_PORT:?VPS_PORT is required}"
+          : "${VPS_USER:?VPS_USER is required}"
+          : "${VPS_SSH_KEY:?VPS_SSH_KEY is required}"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" > "$HOME/.ssh/known_hosts" 2>/dev/null
+          test -s "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+          export SEPAY_ENV_FILE="$RUNNER_TEMP/oneonline.env"
+          trap 'rm -f "$SEPAY_ENV_FILE"' EXIT
+          umask 077
+
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+
+          keys = (
+              "SEPAY_BANK_CODE",
+              "SEPAY_ACCOUNT_NUMBER",
+              "SEPAY_ACCOUNT_NAME",
+              "SEPAY_WEBHOOK_SECRET",
+              "SEPAY_PAYMENT_TIMEOUT_MINUTES",
+          )
+
+          lines = []
+          for key in keys:
+              value = os.environ.get(key, "")
+              if not value:
+                  raise SystemExit(f"Required GitHub Actions secret is missing: {key}")
+              if "\n" in value or "\r" in value:
+                  raise SystemExit(f"GitHub Actions secret must be a single line: {key}")
+              lines.append(f"{key}='{value.replace(chr(39), chr(92) + chr(39))}'")
+
+          env_file = Path(os.environ["SEPAY_ENV_FILE"])
+          env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          env_file.chmod(0o600)
+          PY
+
+          SSH_OPTIONS=(
+            -i "$HOME/.ssh/id_ed25519"
+            -o BatchMode=yes
+            -o StrictHostKeyChecking=yes
+          )
+
+          scp "${SSH_OPTIONS[@]}" -P "$VPS_PORT" \
+            "$SEPAY_ENV_FILE" \
+            "$VPS_USER@$VPS_HOST:/opt/oneonline/.env"
+
+          ssh "${SSH_OPTIONS[@]}" -p "$VPS_PORT" \
+            "$VPS_USER@$VPS_HOST" 'bash -se' <<'REMOTE'
+          set -euo pipefail
+
+          chmod 600 /opt/oneonline/.env
+
+          cd /opt/oneonline/OneOnline-Backend
+          git fetch origin deploy
+          git checkout -B deploy origin/deploy
+
+          cd /opt/oneonline
+          docker compose up -d --build --force-recreate backend
+          test "$(docker inspect --format '{{.State.Running}}' oneonline-backend)" = "true"
+          REMOTE
