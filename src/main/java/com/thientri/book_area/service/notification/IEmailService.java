@@ -4,4 +4,5 @@ import com.thientri.book_area.model.order.Order;
 
 public interface IEmailService {
 	void sendInvoiceEmail(Order order);
+	void sendOtpEmail(String recipientEmail, String otpCode);
 }

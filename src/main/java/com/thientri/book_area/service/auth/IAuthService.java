@@ -15,4 +15,10 @@ public interface IAuthService {
 	AuthResponse loginWithGoogle(GoogleLoginRequest request);
 
 	User updateProfile(User currentUser, UpdateProfileRequest request);
+
+	void forgotPassword(com.thientri.book_area.dto.request.user.ForgotPasswordRequest request);
+
+	void verifyOtp(com.thientri.book_area.dto.request.user.VerifyOtpRequest request);
+
+	void resetPassword(com.thientri.book_area.dto.request.user.ResetPasswordRequest request);
 }

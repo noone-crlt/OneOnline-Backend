@@ -31,7 +31,19 @@ import com.thientri.book_area.service.auth.GoogleIdentityService;
 import com.thientri.book_area.service.auth.GoogleIdentityService.GoogleUserInfo;
 import com.thientri.book_area.service.auth.IAuthService;
 
+import com.thientri.book_area.dto.request.user.ForgotPasswordRequest;
+import com.thientri.book_area.dto.request.user.VerifyOtpRequest;
+import com.thientri.book_area.dto.request.user.ResetPasswordRequest;
+import com.thientri.book_area.service.notification.IEmailService;
+
+import java.security.SecureRandom;
+import java.util.concurrent.ConcurrentHashMap;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +58,20 @@ public class AuthServiceImpl implements IAuthService {
 	private final AuthenticationManager authenticationManager; // Thêm Auth Manager
 	private final UserMapper userMapper; // Thêm Mapper
 	private final GoogleIdentityService googleIdentityService;
+	private final IEmailService emailService;
+
+	private final ConcurrentHashMap<String, OtpData> otpStorage = new ConcurrentHashMap<>();
+	private final SecureRandom secureRandom = new SecureRandom();
+
+	@Getter
+	@Setter
+	@NoArgsConstructor
+	@AllArgsConstructor
+	private static class OtpData {
+		private String code;
+		private LocalDateTime expiryTime;
+		private boolean verified;
+	}
 
 	@Override
 	@Transactional // Đảm bảo tính toàn vẹn: Lỗi ở bất kỳ dòng nào thì rollback toàn bộ
@@ -170,5 +196,65 @@ public class AuthServiceImpl implements IAuthService {
 		String accessToken = jwtService.generateToken(user);
 		String refreshToken = generateAndSaveRefreshToken(user);
 		return userMapper.toAuthResponse(user, accessToken, refreshToken);
+	}
+
+	@Override
+	public void forgotPassword(ForgotPasswordRequest request) {
+		String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+		User user = userRepository.findByEmailIgnoreCase(email)
+				.orElseThrow(() -> new BadRequestException("Địa chỉ email này chưa được đăng ký trong hệ thống."));
+
+		if (user.getStatus() == UserStatus.BANNED) {
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa.");
+		}
+
+		// Sinh mã OTP 6 chữ số ngẫu nhiên
+		String otpCode = String.format("%06d", secureRandom.nextInt(1000000));
+
+		// Lưu OTP có hiệu lực 10 phút
+		otpStorage.put(email, new OtpData(otpCode, LocalDateTime.now().plusMinutes(10), false));
+
+		// Gửi email OTP
+		emailService.sendOtpEmail(user.getEmail(), otpCode);
+	}
+
+	@Override
+	public void verifyOtp(VerifyOtpRequest request) {
+		String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+		OtpData otpData = otpStorage.get(email);
+
+		if (otpData == null || LocalDateTime.now().isAfter(otpData.getExpiryTime())) {
+			throw new BadRequestException("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng gửi lại yêu cầu.");
+		}
+
+		if (!otpData.getCode().equals(request.getOtp().trim())) {
+			throw new BadRequestException("Mã OTP không chính xác. Vui lòng kiểm tra lại.");
+		}
+
+		otpData.setVerified(true);
+	}
+
+	@Override
+	@Transactional
+	public void resetPassword(ResetPasswordRequest request) {
+		String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+		OtpData otpData = otpStorage.get(email);
+
+		if (otpData == null || LocalDateTime.now().isAfter(otpData.getExpiryTime()) || !otpData.isVerified()) {
+			throw new BadRequestException("Mã OTP chưa được xác thực hoặc đã hết hạn. Vui lòng thực hiện lại.");
+		}
+
+		if (!otpData.getCode().equals(request.getOtp().trim())) {
+			throw new BadRequestException("Mã OTP không hợp lệ.");
+		}
+
+		User user = userRepository.findByEmailIgnoreCase(email)
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản để đặt lại mật khẩu."));
+
+		user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+		userRepository.save(user);
+
+		// Hủy bỏ OTP sau khi đã sử dụng thành công
+		otpStorage.remove(email);
 	}
 }
