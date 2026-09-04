@@ -62,6 +62,69 @@ public class EmailServiceImpl implements IEmailService {
 		}
 	}
 
+	@Override
+	@Async
+	public void sendOtpEmail(String recipientEmail, String otpCode) {
+		if (fromEmail == null || fromEmail.isBlank()) {
+			log.warn("Chưa cấu hình spring.mail.username. Không thể gửi email OTP.");
+			return;
+		}
+
+		if (recipientEmail == null || recipientEmail.isBlank()) {
+			log.warn("Địa chỉ email nhận không hợp lệ.");
+			return;
+		}
+
+		try {
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+			helper.setFrom(fromEmail);
+			helper.setTo(recipientEmail);
+			helper.setSubject("Mã xác thực OTP đặt lại mật khẩu - OneOnline");
+
+			String htmlContent = buildOtpHtml(otpCode);
+			helper.setText(htmlContent, true);
+
+			mailSender.send(message);
+			log.info("Đã gửi mã OTP xác thực tới email: {}", recipientEmail);
+		} catch (Exception e) {
+			log.error("Lỗi khi gửi email OTP tới: " + recipientEmail, e);
+		}
+	}
+
+	private String buildOtpHtml(String otpCode) {
+		return "<!DOCTYPE html>"
+				+ "<html><head><meta charset='UTF-8'></head>"
+				+ "<body style=\"margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b;\">"
+				+ "<table width='100%' border='0' cellspacing='0' cellpadding='0' style='background-color: #f8fafc; padding: 32px 0;'>"
+				+ "<tr><td align='center'>"
+				+ "<table width='520' border='0' cellspacing='0' cellpadding='0' style='background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06);'>"
+				+ "<tr><td style='background-color: #0f172a; padding: 28px; text-align: center;'>"
+				+ "<h1 style='margin: 0; color: #ffffff; font-size: 1.5rem; letter-spacing: 0.08em;'>OneOnline</h1>"
+				+ "<p style='margin: 6px 0 0 0; color: #94a3b8; font-size: 0.85rem;'>Xác minh tài khoản của bạn</p>"
+				+ "</td></tr>"
+				+ "<tr><td style='padding: 32px 28px; text-align: center;'>"
+				+ "<h2 style='margin-top: 0; color: #0f172a; font-size: 1.25rem;'>Mã xác thực OTP</h2>"
+				+ "<p style='color: #64748b; font-size: 0.95rem; line-height: 1.5; margin-bottom: 24px;'>"
+				+ "Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản tại OneOnline. Sử dụng mã OTP bên dưới để hoàn tất xác minh. Mã có hiệu lực trong <strong>10 phút</strong>."
+				+ "</p>"
+				+ "<div style='display: inline-block; background-color: #eff6ff; border: 2px dashed #3b82f6; border-radius: 12px; padding: 16px 36px; font-size: 2.25rem; font-weight: 800; letter-spacing: 0.3em; color: #1d4ed8; margin-bottom: 24px;'>"
+				+ otpCode
+				+ "</div>"
+				+ "<p style='color: #94a3b8; font-size: 0.825rem; margin: 0;'>"
+				+ "Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ bộ phận hỗ trợ."
+				+ "</p>"
+				+ "</td></tr>"
+				+ "<tr><td style='background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 0.8rem; color: #64748b;'>"
+				+ "© " + java.time.Year.now().getValue() + " OneOnline Library. All rights reserved."
+				+ "</td></tr>"
+				+ "</table>"
+				+ "</td></tr>"
+				+ "</table>"
+				+ "</body></html>";
+	}
+
 	private String buildInvoiceHtml(Order order) {
 		NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");

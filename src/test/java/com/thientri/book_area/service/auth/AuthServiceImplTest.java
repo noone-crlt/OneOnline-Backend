@@ -52,6 +52,8 @@ class AuthServiceImplTest {
 	private UserMapper userMapper;
 	@Mock
 	private GoogleIdentityService googleIdentityService;
+	@Mock
+	private com.thientri.book_area.service.notification.IEmailService emailService;
 	@InjectMocks
 	private AuthServiceImpl authService;
 
@@ -106,5 +108,17 @@ class AuthServiceImplTest {
 		AuthResponse result = authService.loginWithGoogle(request);
 
 		assertSame(expected, result);
+	}
+
+	@Test
+	void forgotPasswordSendsOtpEmailForExistingUser() {
+		com.thientri.book_area.dto.request.user.ForgotPasswordRequest req = new com.thientri.book_area.dto.request.user.ForgotPasswordRequest("test@example.com");
+		User user = User.builder().id(10L).email("test@example.com").status(UserStatus.ACTIVE).build();
+
+		when(userRepository.findByEmailIgnoreCase("test@example.com")).thenReturn(Optional.of(user));
+
+		authService.forgotPassword(req);
+
+		org.mockito.Mockito.verify(emailService).sendOtpEmail(eq("test@example.com"), anyString());
 	}
 }

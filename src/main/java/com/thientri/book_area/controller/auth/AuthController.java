@@ -51,6 +51,27 @@ public class AuthController {
 		return ResponseEntity.ok(ApiResponse.success(authService.loginWithGoogle(request)));
 	}
 
+	@PostMapping("/forgot-password")
+	public ResponseEntity<ApiResponse<Void>> forgotPassword(
+			@Valid @RequestBody com.thientri.book_area.dto.request.user.ForgotPasswordRequest request) {
+		authService.forgotPassword(request);
+		return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi tới email của bạn.", null));
+	}
+
+	@PostMapping("/verify-otp")
+	public ResponseEntity<ApiResponse<Void>> verifyOtp(
+			@Valid @RequestBody com.thientri.book_area.dto.request.user.VerifyOtpRequest request) {
+		authService.verifyOtp(request);
+		return ResponseEntity.ok(ApiResponse.success("Mã OTP hợp lệ.", null));
+	}
+
+	@PostMapping("/reset-password")
+	public ResponseEntity<ApiResponse<Void>> resetPassword(
+			@Valid @RequestBody com.thientri.book_area.dto.request.user.ResetPasswordRequest request) {
+		authService.resetPassword(request);
+		return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công!", null));
+	}
+
 	@GetMapping("/me")
 	public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentUser(@AuthenticationPrincipal User user) {
 		return ResponseEntity.ok(ApiResponse.success(profileResponse(user)));

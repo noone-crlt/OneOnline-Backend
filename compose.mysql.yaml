@@ -15,7 +15,7 @@ services:
       - book_area_mysql_data:/var/lib/mysql
       - ./src/main/resources/static/sql/book_area2.sql:/docker-entrypoint-initdb.d/01-book-area.sql:ro
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_book_area_password" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pDONG04082006@@" ]
       interval: 5s
       timeout: 5s
       retries: 20
