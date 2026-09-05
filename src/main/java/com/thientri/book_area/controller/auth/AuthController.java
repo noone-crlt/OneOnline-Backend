@@ -33,6 +33,12 @@ public class AuthController {
 
 	private final IAuthService authService;
 
+	@PostMapping("/register/send-otp")
+	public ResponseEntity<ApiResponse<Void>> sendRegisterOtp(@Valid @RequestBody RegisterRequest request) {
+		authService.sendRegisterOtp(request);
+		return ResponseEntity.ok(ApiResponse.success("Mã OTP xác thực đăng ký đã được gửi tới email của bạn.", null));
+	}
+
 	@PostMapping("/register")
 	public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
 		authService.register(request);
