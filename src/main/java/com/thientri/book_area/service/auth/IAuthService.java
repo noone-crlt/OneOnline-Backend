@@ -8,6 +8,8 @@ import com.thientri.book_area.dto.response.user.AuthResponse;
 import com.thientri.book_area.model.user.User;
 
 public interface IAuthService {
+	void sendRegisterOtp(RegisterRequest request);
+
 	void register(RegisterRequest request);
 
 	AuthResponse login(LoginRequest request);

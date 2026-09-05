@@ -74,29 +74,54 @@ public class AuthServiceImpl implements IAuthService {
 	}
 
 	@Override
-	@Transactional // Đảm bảo tính toàn vẹn: Lỗi ở bất kỳ dòng nào thì rollback toàn bộ
-	public void register(RegisterRequest request) {
-
-		// 1. Kiểm tra nghiệp vụ: Email đã tồn tại chưa?
-		if (userRepository.existsByEmail(request.getEmail())) {
+	public void sendRegisterOtp(RegisterRequest request) {
+		String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+		if (userRepository.existsByEmail(email)) {
 			throw new BadRequestException("Email này đã được sử dụng trong hệ thống.");
 		}
 
-		// 2. Tìm quyền mặc định (ROLE_USER) cho tài khoản mới
+		String otpCode = String.format("%06d", secureRandom.nextInt(1000000));
+		otpStorage.put(email, new OtpData(otpCode, LocalDateTime.now().plusMinutes(10), false));
+
+		emailService.sendOtpEmail(email, otpCode);
+	}
+
+	@Override
+	@Transactional // Đảm bảo tính toàn vẹn: Lỗi ở bất kỳ dòng nào thì rollback toàn bộ
+	public void register(RegisterRequest request) {
+		String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+
+		// 1. Kiểm tra nghiệp vụ: Email đã tồn tại chưa?
+		if (userRepository.existsByEmail(email)) {
+			throw new BadRequestException("Email này đã được sử dụng trong hệ thống.");
+		}
+
+		// 2. Xác thực OTP
+		OtpData otpData = otpStorage.get(email);
+		if (otpData == null || LocalDateTime.now().isAfter(otpData.getExpiryTime())) {
+			throw new BadRequestException("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng gửi lại mã OTP.");
+		}
+
+		if (request.getOtp() == null || request.getOtp().isBlank() || !otpData.getCode().equals(request.getOtp().trim())) {
+			throw new BadRequestException("Mã OTP không chính xác. Vui lòng kiểm tra lại.");
+		}
+
+		// 3. Tìm quyền mặc định (ROLE_USER) cho tài khoản mới
 		Role userRole = roleRepository.findByName("USER")
 				.orElseThrow(() -> new RuntimeException("Lỗi hệ thống: Không tìm thấy quyền ROLE_USER"));
 
 		Set<Role> roles = new HashSet<>();
 		roles.add(userRole);
 
-		// 3. Chuyển đổi DTO thành Entity bằng Builder
-		User newUser = User.builder().email(request.getEmail())
+		// 4. Chuyển đổi DTO thành Entity bằng Builder
+		User newUser = User.builder().email(email)
 				// BẮT BUỘC: Mã hóa mật khẩu trước khi lưu xuống DB
 				.password(passwordEncoder.encode(request.getPassword())).fullName(request.getFullName())
 				.phone(request.getPhone()).status(UserStatus.ACTIVE).roles(roles).build();
 
 		// 5. Lưu xuống Database
 		userRepository.save(newUser);
+		otpStorage.remove(email);
 	}
 
 	@Override

@@ -21,4 +21,6 @@ public class RegisterRequest {
 
 	@Pattern(regexp = "^(0[35789]\\d{8}|02\\d{9})?$", message = "Số điện thoại không hợp lệ (Di động 10 số hoặc cố định 11 số bắt đầu từ số 0)")
 	private String phone;
+
+	private String otp;
 }
