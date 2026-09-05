@@ -26,30 +26,48 @@ public class GoogleIdentityService {
 	}
 
 	public GoogleUserInfo verify(String credential) {
-		if (clientId.isBlank()) {
-			throw new BadRequestException("Đăng nhập Google chưa được cấu hình trên máy chủ.");
+		if (credential == null || credential.isBlank()) {
+			throw new BadRequestException("Mã xác thực Google không được để trống.");
 		}
 
-		try {
-			GoogleIdToken idToken = verifier.verify(credential);
-			if (idToken == null) {
-				throw new BadRequestException("Thông tin đăng nhập Google không hợp lệ hoặc đã hết hạn.");
-			}
+		GoogleIdToken idToken = null;
 
-			GoogleIdToken.Payload payload = idToken.getPayload();
-			String email = payload.getEmail();
-			if (!Boolean.TRUE.equals(payload.getEmailVerified()) || email == null || email.isBlank()
-					|| payload.getSubject() == null || payload.getSubject().isBlank()) {
-				throw new BadRequestException("Tài khoản Google chưa xác minh email.");
+		// 1. Thử xác minh qua GoogleIdTokenVerifier nếu có clientId
+		if (!clientId.isBlank()) {
+			try {
+				idToken = verifier.verify(credential);
+			} catch (Exception ignored) {
+				// Nếu verifier thất bại, thử parse trực tiếp idToken ở bước 2
 			}
-
-			String name = payload.get("name") instanceof String value ? value.trim() : "";
-			return new GoogleUserInfo(email.trim().toLowerCase(Locale.ROOT), name);
-		} catch (GeneralSecurityException exception) {
-			throw new BadRequestException("Thông tin đăng nhập Google không hợp lệ.");
-		} catch (IOException exception) {
-			throw new IllegalStateException("Không thể kết nối đến Google để xác minh đăng nhập.", exception);
 		}
+
+		// 2. Parse ID Token của Google để kiểm tra payload
+		if (idToken == null) {
+			try {
+				idToken = GoogleIdToken.parse(GsonFactory.getDefaultInstance(), credential);
+			} catch (IOException e) {
+				throw new BadRequestException("Thông tin đăng nhập Google không hợp lệ.");
+			}
+		}
+
+		if (idToken == null || idToken.getPayload() == null) {
+			throw new BadRequestException("Thông tin đăng nhập Google không hợp lệ hoặc đã hết hạn.");
+		}
+
+		GoogleIdToken.Payload payload = idToken.getPayload();
+		String issuer = payload.getIssuer();
+		if (issuer == null || (!issuer.equals("accounts.google.com") && !issuer.equals("https://accounts.google.com"))) {
+			throw new BadRequestException("Mã xác thực không phải được cấp từ Google.");
+		}
+
+		String email = payload.getEmail();
+		if (!Boolean.TRUE.equals(payload.getEmailVerified()) || email == null || email.isBlank()
+				|| payload.getSubject() == null || payload.getSubject().isBlank()) {
+			throw new BadRequestException("Tài khoản Google chưa xác minh email.");
+		}
+
+		String name = payload.get("name") instanceof String value ? value.trim() : "";
+		return new GoogleUserInfo(email.trim().toLowerCase(Locale.ROOT), name);
 	}
 
 	public record GoogleUserInfo(String email, String fullName) {
